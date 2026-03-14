@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tribunal Harness | Legal Logic Engine V2.0</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Outfit:wght@300;400;500;600&family=Fira+Code:wght@300..700&display=swap"
+        rel="stylesheet">
+
+    <style>
+        /* DESIGN SYSTEM: FLANK / LEGORA */
+        :root {
+            /* Palette */
+            --bg-primary: #050505;
+            --bg-secondary: #0A0A0A;
+            --bg-sage: #C8C9A6;
+            --bg-sage-dim: #b3b492;
+
+            --text-primary: #E8E8E8;
+            --text-secondary: #A0A0A0;
+            --text-dark: #1a1a1a;
+
+            --accent-purple: #7B6BF5;
+            --accent-purple-glow: rgba(123, 107, 245, 0.2);
+            --error-coral: #E85D5D;
+
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-focus: rgba(123, 107, 245, 0.5);
+
+            /* Typography */
+            --font-serif: 'Cormorant Garamond', serif;
+            --font-sans: 'Outfit', sans-serif;
+            --font-mono: 'Fira Code', monospace;
+
+            /* Spacing & Layout */
+            --radius-card: 12px;
+            --radius-pill: 100px;
+            --container-width: 1200px;
+            --header-height: 80px;
+
+            /* Transitions */
+            --ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
+        }
+
+        /* RESET & BASE */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+            transition: color 0.3s ease;
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font-family: inherit;
+        }
+
+        /* TYPOGRAPHY */
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            font-family: var(--font-serif);
+            font-weight: 400;
+            color: #fff;
+            letter-spacing: -0.01em;
+        }
+
+        .text-hero {
+            font-size: clamp(3rem, 5vw, 5.5rem);
+            line-height: 0.95;
+            margin-bottom: 1.5rem;
+        }
+
+        .text-subhead {
+            font-family: var(--font-sans);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            font-size: 0.8rem;
+            color: var(--accent-purple);
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .text-lead {
+            font-size: 1.125rem;
+            font-weight: 300;
+            color: var(--text-secondary);
+            max-width: 600px;
+        }
+
+        /* COMPONENTS */
+
+        /* Navigation */
+        .nav-pill {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-pill);
+            padding: 0.5rem 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 2rem;
+            max-width: var(--container-width);
+            margin: 0 auto;
+            z-index: 100;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .nav-brand {
+            font-family: var(--font-serif);
+            font-size: 1.25rem;
+            font-weight: 600;
+            padding: 0 1.5rem;
+            font-style: italic;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-link {
+            font-size: 0.85rem;
+            font-weight: 500;
+            opacity: 0.7;
+            position: relative;
+        }
+
+        .nav-link:hover {
+            opacity: 1;
+        }
+
+        .nav-cta {
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-pill);
+            padding: 0.6rem 1.4rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .nav-cta:hover {
+            border-color: var(--accent-purple);
+            color: var(--accent-purple);
+            background: rgba(123, 107, 245, 0.05);
+        }
+
+        /* Hero Section */
+        .hero-section {
+            min-height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 8rem 2rem 4rem;
+            max-width: var(--container-width);
+            margin: 0 auto;
+        }
+
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 4rem;
+            width: 100%;
+            align-items: center;
+        }
+
+        .hero-visual {
+            position: relative;
+            height: 600px;
+            border-radius: var(--radius-card);
+            overflow: hidden;
+            border: 1px solid var(--border-subtle);
+            background: #000;
+        }
+
+        .hero-visual img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.8;
+            filter: contrast(1.1) saturate(0.8);
+            transition: transform 10s ease;
+        }
+
+        .hero-visual:hover img {
+            transform: scale(1.05);
+            /* Slight zoom on hover */
+        }
+
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, #050505 0%, transparent 60%);
+            z-index: 10;
+        }
+
+        /* Interface Container (Input Panel) */
+        .interface-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-card);
+            padding: 2.5rem;
+            position: relative;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .input-field {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-subtle);
+            padding: 0.75rem 1rem;
+            color: #fff;
+            border-radius: 6px;
+            font-family: var(--font-sans);
+            font-size: 0.95rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 0 4px var(--accent-purple-glow);
+        }
+
+        .toggle-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-pill);
+            padding: 4px;
+            display: inline-flex;
+            width: 100%;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 0.6rem;
+            text-align: center;
+            border-radius: var(--radius-pill);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-secondary);
+        }
+
+        .toggle-btn.active {
+            background: var(--bg-primary);
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: var(--accent-purple);
+            color: #fff;
+            border: none;
+            padding: 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px var(--accent-purple-glow);
+        }
+
+        .drop-zone {
+            border: 1px dashed var(--border-subtle);
+            border-radius: 6px;
+            padding: 2rem;
+            text-align: center;
+            margin-top: 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .drop-zone:hover {
+            border-color: var(--accent-purple);
+            background: rgba(123, 107, 245, 0.05);
+        }
+
+        /* Results Panel */
+        .results-panel {
+            border-left: 1px solid var(--border-subtle);
+            padding-left: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 400px;
+        }
+
+        .empty-state {
+            text-align: center;
+            opacity: 0.5;
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        /* Metrics Section */
+        .metrics-section {
+            padding: 6rem 2rem;
+            background: linear-gradient(to bottom, var(--bg-primary), #080808);
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            max-width: var(--container-width);
+            margin: 0 auto;
+        }
+
+        .metric-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            padding: 2.5rem;
+            border-radius: var(--radius-card);
+            position: relative;
+        }
+
+        .metric-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 2rem;
+        }
+
+        .doc-viz {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: flex-end;
+            margin-bottom: 2rem;
+            opacity: 0.8;
+            height: 180px;
+            justify-content: center;
+        }
+
+        .line {
+            height: 4px;
+            border-radius: 2px;
+            width: 100%;
+            max-width: 120px;
+            background: #333;
+        }
+
+        .line.red {
+            background: var(--error-coral);
+            width: 80%;
+        }
+
+        .line.purple {
+            background: var(--accent-purple);
+            width: 100%;
+        }
+
+        .metric-value {
+            font-family: var(--font-serif);
+            font-size: 4rem;
+            line-height: 1;
+        }
+
+        .metric-unit {
+            font-family: var(--font-sans);
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-left: 0.5rem;
+        }
+
+        /* Compliance Section */
+        .compliance-section {
+            padding: 6rem 2rem;
+            max-width: var(--container-width);
+            margin: 0 auto;
+        }
+
+        .section-header {
+            margin-bottom: 4rem;
+            text-align: center;
+        }
+
+        .compliance-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+
+        .compliance-card {
+            border: 1px solid var(--border-subtle);
+            padding: 2rem;
+            border-radius: var(--radius-card);
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: border-color 0.3s ease;
+        }
+
+        .compliance-card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .compliance-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .compliance-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .compliance-badge {
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: var(--accent-purple);
+        }
+
+        /* Footer */
+        .site-footer {
+            background-color: var(--bg-sage);
+            color: var(--text-dark);
+            padding: 6rem 2rem 2rem;
+            margin-top: 4rem;
+        }
+
+        .footer-content {
+            max-width: var(--container-width);
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            margin-bottom: 6rem;
+        }
+
+        .footer-heading {
+            font-family: var(--font-serif);
+            font-size: 2.5rem;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-links {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .footer-list {
+            list-style: none;
+        }
+
+        .footer-list li {
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .footer-col-head {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1.5rem;
+            opacity: 0.6;
+            font-weight: 700;
+        }
+
+        .brand-huge {
+            font-family: var(--font-serif);
+            font-size: clamp(4rem, 12vw, 12rem);
+            text-align: center;
+            color: var(--bg-primary);
+            /* Use dark bg color for text on sage */
+            opacity: 0.1;
+            line-height: 0.8;
+            letter-spacing: -0.04em;
+            pointer-events: none;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 900px) {
+
+            .hero-grid,
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .compliance-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .nav-pill {
+                top: 1rem;
+                width: 90%;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            /* Hide links on mobile for now */
+            .results-panel {
+                border-left: none;
+                border-top: 1px solid var(--border-subtle);
+                padding-left: 0;
+                padding-top: 2rem;
+                margin-top: 2rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <nav class="nav-pill">
+        <a href="#" class="nav-brand">Tribunal Harness</a>
+        <div class="nav-links">
+            <a href="#" class="nav-link">Product</a>
+            <a href="#" class="nav-link">How It Works</a>
+            <a href="#" class="nav-link">Security</a>
+            <a href="#" class="nav-link">Documentation</a>
+            <a href="#" class="nav-link">About</a>
+        </div>
+        <div style="display:flex; gap:1.5rem; align-items:center; padding-right:0.5rem;">
+            <a href="#" class="nav-link">Blog</a>
+            <a href="#" class="nav-cta">Request Access</a>
+        </div>
+    </nav>
+
+    <!-- Hero / App Interface -->
+    <section class="hero-section">
+        <div class="hero-grid">
+
+            <!-- Left: Hero Text & Interface -->
+            <div>
+                <span class="text-subhead">Legal Logic Engine V2.0</span>
+                <h1 class="text-hero">Tribunal Harness</h1>
+                <p class="text-lead" style="margin-bottom: 3rem;">
+                    Structured case analysis for employment tribunal litigants-in-person. Turn complex facts into
+                    durable legal arguments.
+                </p>
+
+                <!-- Status Indicator -->
+                <div
+                    style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1.5rem; font-size:0.75rem; color:var(--text-secondary);">
+                    <div
+                        style="width:8px; height:8px; background:#4ade80; border-radius:50%; box-shadow:0 0 8px rgba(74,222,128,0.4);">
+                    </div>
+                    SYSTEM OPERATIONAL
+                </div>
+
+                <!-- App Interface Card -->
+                <div class="interface-card">
+                    <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap:2.5rem;">
+                        <!-- Input Column -->
+                        <div>
+                            <!-- API Key -->
+                            <div class="input-group">
+                                <label class="input-label">API Authorization</label>
+                                <input type="password" class="input-field" placeholder="sk-ant-..."
+                                    value="sk-ant-************" disabled>
+                            </div>
+
+                            <!-- Mode Toggle -->
+                            <div class="toggle-container">
+                                <div class="toggle-btn active" onclick="toggleMode(this, 'narrative')">Narrative</div>
+                                <div class="toggle-btn" onclick="toggleMode(this, 'schema')">Guided Schema</div>
+                            </div>
+
+                            <!-- Claim Type -->
+                            <div class="input-group">
+                                <label class="input-label">Claim Type</label>
+                                <select class="input-field" onchange="updateSchema(this.value)">
+                                    <option value="unfair_dismissal">Unfair Dismissal (ERA 1996 s98)</option>
+                                    <option value="discrimination">Discrimination (EA 2010 s13)</option>
+                                    <option value="whistleblowing">Whistleblowing (ERA Part IVA)</option>
+                                </select>
+                            </div>
+
+                            <!-- Dynamic Fields Container -->
+                            <div id="dynamic-fields">
+                                <div class="input-group">
+                                    <label class="input-label">Date of Last Act</label>
+                                    <input type="date" class="input-field">
+                                </div>
+                                <div class="input-group">
+                                    <label class="input-label">Date of Dismissal</label>
+                                    <input type="date" class="input-field">
+                                </div>
+                            </div>
+
+                            <button class="btn-primary">Run Analysis</button>
+
+                            <!-- Drop Zone -->
+                            <div class="drop-zone">
+                                <span style="font-size:1.2rem; display:block; margin-bottom:0.5rem;">📄</span>
+                                Drop respondent documents (.txt)
+                            </div>
+                        </div>
+
+                        <!-- Output Column -->
+                        <div class="results-panel">
+                            <div class="empty-state">
+                                <div class="empty-icon"
+                                    style="color:var(--text-secondary); display:flex; justify-content:center; margin-bottom:1rem;">
+                                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 3v19" />
+                                        <path d="M5 8h14" />
+                                        <path d="M5 8l-3 9h6l-3-9" />
+                                        <path d="M19 8l-3 9h6l-3-9" />
+                                        <path d="M9 22h6" />
+                                        <circle cx="12" cy="3" r="1.5" />
+                                    </svg>
+                                </div>
+                                <h3 style="margin-bottom:0.5rem; font-size:1.2rem;">Awaiting Case Data</h3>
+                                <p
+                                    style="font-size:0.85rem; color:var(--text-secondary); max-width:200px; margin:0 auto; font-weight:300;">
+                                    Configure your parameters and upload case files to generate a preliminary schema
+                                    analysis.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Visual -->
+            <div class="hero-visual">
+                <!-- Using abstract geometric pattern for 'cool' high-tech context -->
+                <img src="file:///Users/ciaran/.gemini/antigravity/brain/1a46ccab-0a33-4a89-9594-782c8d3c1201/hero_pattern_abstract_1771185701299.png"
+                    alt="Abstract Data Pattern">
+                <div class="hero-overlay"></div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Environment Section -->
+    <section class="environment-section" style="padding: 6rem 2rem; max-width: var(--container-width); margin: 0 auto;">
+        <div
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; margin-bottom: 6rem;">
+            <div>
+                <span class="text-subhead">The Tribunal Environment</span>
+                <h2 style="font-size: 3rem; margin-bottom: 1.5rem;">A structured forum for justice.</h2>
+                <p class="text-lead" style="font-size: 1rem; margin-bottom: 2rem;">
+                    Employment Tribunals operate differently from criminal courts. There are no wigs, no gowns, and no
+                    juries.
+                    Instead, cases are heard by a specialist panel in modern hearing centres across the United Kingdom.
+                </p>
+
+                <div style="display: grid; gap: 1.5rem;">
+                    <div style="display: flex; gap: 1rem; align-items: start;">
+                        <div
+                            style="background: rgba(123, 107, 245, 0.1); color: var(--accent-purple); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; padding: 6px;">
+                            1</div>
+                        <div>
+                            <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: #fff;">The Employment Judge</h4>
+                            <p style="font-size: 0.9rem; color: var(--text-secondary);">A legally qualified judge who
+                                manages the proceedings and applies the law.</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; align-items: start;">
+                        <div
+                            style="background: rgba(123, 107, 245, 0.1); color: var(--accent-purple); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; padding: 6px;">
+                            2</div>
+                        <div>
+                            <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: #fff;">Lay Members</h4>
+                            <p style="font-size: 0.9rem; color: var(--text-secondary);">Two non-legal members providing
+                                industrial experience: one from an employer background, one from an employee background.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div style="position: relative;">
+                <img src="file:///Users/ciaran/.gemini/antigravity/brain/1a46ccab-0a33-4a89-9594-782c8d3c1201/panel_pattern_abstract_1771185715349.png"
+                    style="width: 100%; border-radius: var(--radius-card); border: 1px solid var(--border-subtle); display: block;"
+                    alt="Structural Analysis Pattern">
+
+            </div>
+        </div>
+
+        <div
+            style="background: var(--bg-secondary); border-radius: var(--radius-card); overflow: hidden; display: grid; grid-template-columns: 1.5fr 1fr; border: 1px solid var(--border-subtle);">
+            <div style="padding: 3rem;">
+                <span class="text-subhead">Evidence Preparation</span>
+                <h3 style="font-size: 2rem; margin-bottom: 1rem;">The Hearing Bundle</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem; max-width: 500px;">
+                    Success relies on a meticulously prepared paginated bundle. Tribunal Harness automates the
+                    organisation of your evidence, ensuring every page corresponds to your witness statement citations.
+                </p>
+            </div>
+            <div style="position: relative;">
+                <img src="file:///Users/ciaran/.gemini/antigravity/brain/1a46ccab-0a33-4a89-9594-782c8d3c1201/bundle_pattern_abstract_1771185728274.png"
+                    style="width: 100%; height: 100%; object-fit: cover;" alt="Digital Evidence Layers">
+                <div
+                    style="position: absolute; inset: 0; background: linear-gradient(to right, var(--bg-secondary), transparent 50%);">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Metrics Section -->
+    <section class="metrics-section">
+        <div class="comparison-grid">
+            <!-- Card 1: Old Way -->
+            <div class="metric-card">
+                <span class="metric-label">without Tribunal Harness:</span>
+                <div class="doc-viz">
+                    <div class="line" style="width:40%"></div>
+                    <div class="line" style="width:60%"></div>
+                    <div class="line" style="width:50%"></div>
+                    <div class="line red" style="width:70%"></div>
+                    <div class="line red" style="width:90%"></div>
+                    <div class="line red" style="width:65%"></div>
+                    <div class="line red" style="width:85%"></div>
+                </div>
+                <div>
+                    <span class="metric-value" style="color:var(--error-coral)">40+</span>
+                    <span class="metric-unit">hours manual research</span>
+                </div>
+            </div>
+
+            <!-- Card 2: New Way -->
+            <div class="metric-card">
+                <span class="metric-label" style="background:rgba(123, 107, 245, 0.1); color:var(--accent-purple);">with
+                    Tribunal Harness:</span>
+                <div class="doc-viz">
+                    <div class="line" style="width:40%; opacity:0.3"></div>
+                    <div class="line purple" style="width:100%"></div>
+                    <div class="line purple" style="width:100%"></div>
+                    <div class="line purple" style="width:100%"></div>
+                    <div class="line purple" style="width:100%"></div>
+                    <div class="line purple" style="width:100%"></div>
+                    <div class="line purple" style="width:100%"></div>
+                </div>
+                <div>
+                    <span class="metric-value" style="color:#fff;">↓ 0</span>
+                    <span class="metric-unit">hours wasted on triage</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Compliance Section -->
+    <section class="compliance-section">
+        <div class="section-header">
+            <span class="text-subhead">Certified & Compliant</span>
+            <h2 style="max-width:600px; margin:0 auto; font-size:2.5rem;">Committed to maintaining compliance with
+                rigorous legal standards.</h2>
+        </div>
+
+        <div class="compliance-grid">
+            <div class="compliance-card">
+                <div>
+                    <h4 class="compliance-title">GDPR Compliant</h4>
+                    <p class="compliance-desc">Operates under strictly enforced data privacy controls with zero data
+                        retention for unpaid tiers.</p>
+                </div>
+                <div class="compliance-badge">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        <path d="M12 8v4" />
+                        <circle cx="12" cy="16" r="1" />
+                    </svg>
+                </div>
+            </div>
+            <div class="compliance-card">
+                <div>
+                    <h4 class="compliance-title">Equality Act 2010</h4>
+                    <p class="compliance-desc">Full schema coverage for s13, s19, s20-21, and s26/27 provisions.</p>
+                </div>
+                <div class="compliance-badge">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3v18" />
+                        <path d="M6 8h12" />
+                        <path d="M6 8l-3 9h6l-3-9" />
+                        <path d="M18 8l-3 9h6l-3-9" />
+                    </svg>
+                </div>
+            </div>
+            <div class="compliance-card">
+                <div>
+                    <h4 class="compliance-title">Open Logic</h4>
+                    <p class="compliance-desc">All reasoning steps are auditable and grounded in primary legislation.
+                    </p>
+                </div>
+                <div class="compliance-badge">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                    </svg>
+                </div>
+            </div>
+            <div class="compliance-card">
+                <div>
+                    <h4 class="compliance-title">ICO Registered</h4>
+                    <p class="compliance-desc">Registered data controller ensuring full transparency in processing.</p>
+                </div>
+                <div class="compliance-badge">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0" />
+                        <path d="M12 15v2" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="footer-content">
+            <div>
+                <h2 class="footer-heading">Legal work,<br>without limits.</h2>
+                <p style="max-width:300px; opacity:0.7; font-size:0.9rem;">Empowering litigants-in-person to present
+                    their best case with structured, verifiable analysis.</p>
+            </div>
+            <div class="footer-links">
+                <div>
+                    <h5 class="footer-col-head">Platform</h5>
+                    <ul class="footer-list">
+                        <li>Analysis Engine</li>
+                        <li>Case Law DB</li>
+                        <li>Schema Builder</li>
+                        <li>Pricing</li>
+                    </ul>
+                </div>
+                <div>
+                    <h5 class="footer-col-head">Company</h5>
+                    <ul class="footer-list">
+                        <li>About</li>
+                        <li>Methodology</li>
+                        <li>Ethics</li>
+                        <li>Contact</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="brand-huge">Tribunal Harness</div>
+    </footer>
+
+    <script>
+        // Simple Interaction Logic
+        function toggleMode(el, mode) {
+            document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+
+            // In a real app, this would swap views. 
+            // For now, let's just create a smooth transition effect on the dynamic fields
+            const fields = document.getElementById('dynamic-fields');
+            fields.style.opacity = '0.5';
+            setTimeout(() => {
+                fields.style.opacity = '1';
+                // Mock change
+                if (mode === 'schema') {
+                    // Just a visual cue
+                }
+            }, 200);
+        }
+
+        function updateSchema(type) {
+            console.log('Schema updated to:', type);
+            // Visual feedback loop
+            const fields = document.getElementById('dynamic-fields');
+            fields.animate([
+                { opacity: 1, transform: 'translateY(0)' },
+                { opacity: 0.5, transform: 'translateY(5px)' },
+                { opacity: 1, transform: 'translateY(0)' }
+            ], {
+                duration: 300,
+                easing: 'ease-out'
+            });
+        }
+    </script>
+</body>
+
+</html>
