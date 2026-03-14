@@ -1,0 +1,37 @@
+{
+    "name": "tribunal-harness",
+    "version": "2.0.0",
+    "private": true,
+    "description": "UK Employment Tribunal legal intelligence platform",
+    "scripts": {
+        "dev": "next dev --turbopack",
+        "build": "next build",
+        "start": "next start",
+        "lint": "next lint",
+        "test": "TMPDIR=/tmp vitest run",
+        "test:watch": "TMPDIR=/tmp vitest"
+    },
+    "dependencies": {
+        "@anthropic-ai/sdk": "^0.78.0",
+        "clsx": "^2.1.1",
+        "framer-motion": "^12.34.0",
+        "lucide-react": "^0.564.0",
+        "mammoth": "^1.8.0",
+        "next": "^15.1.0",
+        "pdf-parse": "^1.1.1",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "tailwind-merge": "^3.4.1"
+    },
+    "devDependencies": {
+        "@tailwindcss/postcss": "^4.0.0",
+        "@types/node": "^22.0.0",
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
+        "eslint": "^9.0.0",
+        "eslint-config-next": "^15.1.0",
+        "tailwindcss": "^4.0.0",
+        "typescript": "^5.7.0",
+        "vitest": "^3.0.0"
+    }
+}

@@ -1,0 +1,732 @@
+@import "tailwindcss";
+
+/* ============================================
+   DESIGN SYSTEM: TRIBUNAL HARNESS / FLANK
+   Ported from tribunal_harness_v2.html
+   ============================================ */
+
+@theme {
+    /* Palette */
+    --color-bg-primary: #000000;
+    /* Pure Black */
+    --color-bg-secondary: #0A0A0A;
+    /* Near Black for cards */
+    --color-bg-cream: #E8E3D5;
+    /* Cream/Beige for footer */
+    /* Warm Sage/Olive */
+    --color-bg-sage-dim: #b3b492;
+
+    --color-text-primary: #E8E8E8;
+    /* Off-white body */
+    --color-text-secondary: #A0A0A0;
+    --color-text-dark: #1a1a1a;
+    /* For use on Sage background */
+
+    --color-accent-purple: #8B5CF6;
+    /* Primary Purple */
+    --color-accent-purple-glow: rgba(139, 92, 246, 0.2);
+    --color-error-coral: #E85D5D;
+
+    --color-border-subtle: rgba(255, 255, 255, 0.08);
+    --color-border-focus: rgba(123, 107, 245, 0.5);
+
+    /* Typography: font variables are injected by next/font/google on <html> */
+    /* --font-serif, --font-sans, --font-mono set in layout.tsx */
+
+    /* Spacing & Layout */
+    --radius-card: 12px;
+    --radius-pill: 100px;
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+
+/* ============================================
+   LIQUID GLASS DESIGN SYSTEM (Menu/Nav primitives)
+   ============================================ */
+:root {
+    /* Glass Core Variables */
+    --glass-fill: rgba(255, 255, 255, 0.03);
+
+    /* Refraction (Lensing) */
+    --glass-blur-thin: blur(12px) saturate(140%);
+    --glass-blur-medium: blur(20px) saturate(160%);
+    --glass-blur-thick: blur(32px) saturate(180%);
+
+    /* Depth (Shadows & Specular Edges) */
+    --glass-shadow-thin: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 4px 6px rgba(0, 0, 0, 0.1);
+    --glass-shadow-medium: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 10px 15px rgba(0, 0, 0, 0.2);
+    --glass-shadow-thick: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 20px 25px rgba(0, 0, 0, 0.3);
+
+    /* Material Elasticity */
+    --glass-transition-elastic: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    --glass-transition-smooth: all 0.3s ease-out;
+}
+
+/* Accessibility Modifiers */
+[data-a11y="reduced-transparency"] {
+    --glass-fill: rgba(255, 255, 255, 0.15);
+    --glass-blur-thin: blur(4px);
+    --glass-blur-medium: blur(8px);
+    --glass-blur-thick: blur(12px);
+}
+
+[data-a11y="high-contrast"] {
+    --glass-fill: rgba(255, 255, 255, 1);
+    --glass-blur-thin: none;
+    --glass-blur-medium: none;
+    --glass-blur-thick: none;
+    --glass-shadow-thin: 0 0 0 2px #333;
+    --glass-shadow-medium: 0 0 0 2px #333;
+    --glass-shadow-thick: 0 0 0 2px #333;
+    --glass-transition-elastic: none;
+    --glass-transition-smooth: none;
+}
+
+/* Base Glass Material */
+.glass-surface {
+    background-color: var(--glass-fill);
+    position: relative;
+    overflow: hidden;
+    border: none;
+    /* Liquid glass has no hard borders */
+}
+
+/* Hierarchy / Thickness */
+.glass-thin {
+    backdrop-filter: var(--glass-blur-thin);
+    -webkit-backdrop-filter: var(--glass-blur-thin);
+    box-shadow: var(--glass-shadow-thin);
+    border-radius: 8px;
+}
+
+.glass-medium {
+    backdrop-filter: var(--glass-blur-medium);
+    -webkit-backdrop-filter: var(--glass-blur-medium);
+    box-shadow: var(--glass-shadow-medium);
+    border-radius: 16px;
+}
+
+.glass-thick {
+    background-color: rgba(255, 255, 255, 0.05);
+    /* very slightly thicker base */
+    backdrop-filter: var(--glass-blur-thick);
+    -webkit-backdrop-filter: var(--glass-blur-thick);
+    box-shadow: var(--glass-shadow-thick);
+    border-radius: 24px;
+}
+
+/* Typography on Glass */
+.glass-text {
+    font-weight: 600;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Interactive Glass Elements */
+.glass-button {
+    border: none;
+    color: var(--color-text-main);
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    transition: var(--glass-transition-elastic);
+}
+
+.glass-button:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 8px 12px rgba(0, 0, 0, 0.15);
+}
+
+.glass-button:active {
+    transform: translateY(1px) scale(0.98);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+    transition: color 0.3s ease;
+}
+
+/* ============================================
+   TYPOGRAPHY UTILITIES
+   ============================================ */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    color: #fff;
+    letter-spacing: -0.02em;
+}
+
+.text-hero {
+    font-family: var(--font-serif);
+    font-size: clamp(3.5rem, 6vw, 6.5rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 2rem;
+}
+
+.text-subhead {
+    font-family: var(--font-sans);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-size: 0.75rem;
+    color: var(--color-accent-purple);
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+    display: block;
+}
+
+.text-lead {
+    font-family: var(--font-sans);
+    font-size: 1.125rem;
+    font-weight: 300;
+    color: var(--color-text-primary);
+    opacity: 0.8;
+    max-width: 540px;
+    line-height: 1.7;
+}
+
+/* ============================================
+   COMPONENT STYLES
+   ============================================ */
+
+/* Navigation */
+.nav-pill {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-pill);
+    padding: 0.5rem 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    z-index: 100;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+
+.nav-brand {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    font-weight: 600;
+    padding: 0 1.5rem;
+    font-style: italic;
+}
+
+.nav-links {
+    display: flex;
+    gap: 2rem;
+}
+
+.nav-link {
+    font-size: 0.85rem;
+    font-weight: 500;
+    opacity: 0.7;
+    position: relative;
+    transition: opacity 0.3s ease;
+}
+
+.nav-link:hover {
+    opacity: 1;
+}
+
+.nav-cta {
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-pill);
+    padding: 0.6rem 1.4rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.nav-cta:hover {
+    border-color: var(--color-accent-purple);
+    color: var(--color-accent-purple);
+    background: rgba(123, 107, 245, 0.05);
+}
+
+/* Interface Card */
+.interface-card {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-card);
+    padding: 2.5rem;
+    position: relative;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.input-group {
+    margin-bottom: 1.5rem;
+}
+
+.input-label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.input-field {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--color-border-subtle);
+    padding: 0.75rem 1rem;
+    color: #fff;
+    border-radius: 6px;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.input-field:focus {
+    outline: none;
+    border-color: var(--color-accent-purple);
+    box-shadow: 0 0 0 4px var(--color-accent-purple-glow);
+}
+
+/* Toggle */
+.toggle-container {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-pill);
+    padding: 4px;
+    display: inline-flex;
+    width: 100%;
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.toggle-btn {
+    flex: 1;
+    padding: 0.6rem;
+    text-align: center;
+    border-radius: var(--radius-pill);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: var(--color-text-secondary);
+    border: none;
+    background: transparent;
+}
+
+.toggle-btn.active {
+    background: var(--color-bg-primary);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Buttons */
+.btn-primary {
+    width: 100%;
+    background: var(--color-accent-purple);
+    color: #fff;
+    border: none;
+    padding: 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px -5px var(--color-accent-purple-glow);
+}
+
+/* Drop Zone */
+.drop-zone {
+    border: 1px dashed var(--color-border-subtle);
+    border-radius: 6px;
+    padding: 2rem;
+    text-align: center;
+    margin-top: 1.5rem;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.drop-zone:hover {
+    border-color: var(--color-accent-purple);
+    background: rgba(123, 107, 245, 0.05);
+}
+
+/* Results Panel */
+.results-panel {
+    border-left: 1px solid var(--color-border-subtle);
+    padding-left: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 400px;
+}
+
+.empty-state {
+    text-align: center;
+    opacity: 0.5;
+}
+
+/* Metric Cards */
+.metric-card {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-subtle);
+    padding: 2.5rem;
+    border-radius: var(--radius-card);
+    position: relative;
+}
+
+.metric-label {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 2rem;
+}
+
+.metric-value {
+    font-family: var(--font-serif);
+    font-size: 4rem;
+    line-height: 1;
+}
+
+.metric-unit {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    color: var(--color-text-secondary);
+    margin-left: 0.5rem;
+}
+
+/* Compliance Cards */
+.compliance-card {
+    border: 1px solid var(--color-border-subtle);
+    padding: 2rem;
+    border-radius: var(--radius-card);
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: border-color 0.3s ease;
+}
+
+.compliance-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.compliance-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.compliance-desc {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+}
+
+.compliance-badge {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: var(--color-accent-purple);
+}
+
+/* ============================================
+   PAGE SECTION PATTERN
+   purple label → serif headline → body → illustration
+   ============================================ */
+
+.page-section {
+    padding: 6rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.section-header {
+    margin-bottom: 4rem;
+    text-align: center;
+}
+
+.section-header h2 {
+    max-width: 600px;
+    margin: 0 auto;
+    font-size: 2.5rem;
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+
+.site-footer {
+    background-color: var(--color-bg-cream);
+    color: var(--color-text-dark);
+    padding: 6rem 2rem 2rem;
+    margin-top: 4rem;
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    margin-bottom: 6rem;
+}
+
+.footer-heading {
+    font-family: var(--font-serif);
+    font-size: 2.5rem;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+}
+
+.footer-links {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.footer-list {
+    list-style: none;
+}
+
+.footer-list li {
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.footer-list li a:hover {
+    opacity: 0.7;
+}
+
+.footer-col-head {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1.5rem;
+    opacity: 0.6;
+    font-weight: 700;
+}
+
+.brand-huge {
+    font-family: var(--font-serif);
+    font-size: clamp(4rem, 12vw, 12rem);
+    text-align: center;
+    color: var(--color-bg-primary);
+    opacity: 0.1;
+    line-height: 0.8;
+    letter-spacing: -0.04em;
+    pointer-events: none;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 900px) {
+    .nav-links {
+        display: none;
+    }
+
+    .nav-pill {
+        top: 1rem;
+        width: 90%;
+    }
+
+    .results-panel {
+        border-left: none;
+        border-top: 1px solid var(--color-border-subtle);
+        padding-left: 0;
+        padding-top: 2rem;
+        margin-top: 2rem;
+    }
+
+    .footer-content {
+        grid-template-columns: 1fr;
+    }
+
+    /* D6.2 FIX: Collapse hero 2-column grid to single column on tablet */
+    section>div[style*="grid-template-columns: 1.2fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Collapse trust signals 4-column grid */
+    section>div[style*="grid-template-columns: 1fr 1fr 1fr 1fr"] {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    /* Collapse ERA 2025 3-column grid */
+    div[style*="grid-template-columns: repeat(3, 1fr)"] {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    /* Collapse documentation 2-column grid */
+    div[style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Reduce hero font size */
+    .text-hero {
+        font-size: clamp(2.5rem, 8vw, 4rem) !important;
+    }
+}
+
+@media (max-width: 600px) {
+
+    /* D6.2 FIX: Mobile — single column for all grids */
+    div[style*="grid-template-columns: 1fr 1fr 1fr 1fr"],
+    div[style*="grid-template-columns: repeat(3, 1fr)"],
+    div[style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Reduce page section padding on mobile */
+    .page-section {
+        padding: 3rem 1.25rem !important;
+    }
+
+    /* Reduce interface card padding */
+    .interface-card {
+        padding: 1.25rem !important;
+    }
+
+    /* Reduce hero padding */
+    section[style*="paddingTop: \"8rem\""] {
+        padding-top: 5rem !important;
+    }
+
+    /* Reduce hero font size further */
+    .text-hero {
+        font-size: clamp(2rem, 10vw, 3rem) !important;
+    }
+
+    /* Reduce lead text size */
+    .text-lead {
+        font-size: 1rem !important;
+    }
+
+    /* Ensure input panel doesn't overflow on mobile */
+    .interface-card[style*="translateX(2rem)"] {
+        transform: none !important;
+    }
+
+    /* Reduce nav pill padding */
+    .nav-pill {
+        padding: 0.5rem 1rem !important;
+    }
+
+    /* Stack footer columns */
+    .footer-content {
+        grid-template-columns: 1fr !important;
+        gap: 2rem !important;
+    }
+}
+
+/* ============================================
+   LIGHT THEME — Institutional / Marketing Pages
+   ISSUE-16 FIX: Apply .theme-light to page wrapper divs on
+   About, Pricing, How It Works, Docs, and other institutional pages.
+   The dark/noir theme is reserved for the analysis workspace.
+   ============================================ */
+
+.theme-light {
+    background-color: #F8F7F4;
+    color: #1a1a1a;
+}
+
+.theme-light h1,
+.theme-light h2,
+.theme-light h3,
+.theme-light h4,
+.theme-light h5,
+.theme-light h6 {
+    color: #0a0a0a;
+}
+
+.theme-light .text-subhead {
+    color: var(--color-accent-purple);
+}
+
+.theme-light .text-lead {
+    color: #3a3a3a;
+}
+
+.theme-light .interface-card {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.08);
+    color: #1a1a1a;
+}
+
+.theme-light .interface-card h3 {
+    color: #0a0a0a;
+}
+
+.theme-light .input-field {
+    background: #f0ede8;
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #1a1a1a;
+}
+
+.theme-light .input-field:focus {
+    border-color: var(--color-accent-purple);
+    background: #ffffff;
+}
+
+.theme-light .input-label {
+    color: #5a5a5a;
+}
+
+.theme-light a {
+    color: #1a1a1a;
+}
+
+.theme-light a:hover {
+    color: var(--color-accent-purple);
+}
+
+/* Usage: wrap institutional page content in:
+   <div className="theme-light">
+     <div style={{ paddingTop: "10rem" }}>
+       ...
+     </div>
+   </div>
+*/
