@@ -60,7 +60,6 @@ export default function TribunalHarness() {
     const [triageAccepted, setTriageAccepted] = useState({});
 
     // Workflow state
-    const [weeklyBudgetHours, setWeeklyBudgetHours] = useState(4);
     const [workflowTasks, setWorkflowTasks] = useState(() => TASK_TEMPLATES.map(t => ({ ...t, completed: false, active: false })));
     const [timeSpentMins, setTimeSpentMins] = useState(0);
 
