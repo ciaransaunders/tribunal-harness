@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
+import * as claudeClient from "../lib/claude-client";
 
 // ---------------------------------------------------------------------------
 // API Route Integration Tests
@@ -194,6 +195,38 @@ describe("POST /api/analyse — degraded mode", () => {
         const json = await res.json();
         expect(json.statutory_provisions).toBeDefined();
         expect(json.procedural_notes).toBeDefined();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// /api/analyse — error handling
+// ---------------------------------------------------------------------------
+describe("POST /api/analyse — error handling", () => {
+    let POST: (req: NextRequest) => Promise<Response>;
+
+    beforeEach(async () => {
+        // We need an API key to bypass the graceful degradation check
+        process.env.ANTHROPIC_API_KEY = "test-key";
+        const mod = await import("../app/api/analyse/route");
+        POST = mod.POST;
+    });
+
+    it("returns 500 if callClaude throws an error", async () => {
+        // Mock the client functions
+        const isClientAvailableSpy = vi.spyOn(claudeClient, "isClientAvailable").mockReturnValue(true);
+        const callClaudeSpy = vi.spyOn(claudeClient, "callClaude").mockRejectedValue(new Error("Simulated internal error"));
+
+        const req = makeRequest({ claim_type: "unfair_dismissal", narrative_text: "I was dismissed. This is long enough to bypass the narrative check." });
+        const res = await POST(req);
+
+        expect(res.status).toBe(500);
+        const json = await res.json();
+        expect(json.error).toBe("Internal server error");
+        expect(json.details).toContain("Simulated internal error");
+
+        isClientAvailableSpy.mockRestore();
+        callClaudeSpy.mockRestore();
+        delete process.env.ANTHROPIC_API_KEY;
     });
 });
 
