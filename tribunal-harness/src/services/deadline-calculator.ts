@@ -64,6 +64,10 @@ const UK_BANK_HOLIDAYS_EW = new Set([
     "2028-05-29", "2028-08-28", "2028-12-25", "2028-12-26",
 ]);
 
+const MAX_BANK_HOLIDAY_YEAR = Math.max(
+    ...Array.from(UK_BANK_HOLIDAYS_EW).map((dateStr) => parseInt(dateStr.split("-")[0], 10))
+);
+
 function isNonWorkingDay(d: Date): boolean {
     const dow = d.getUTCDay(); // 0 = Sunday, 6 = Saturday
     if (dow === 0 || dow === 6) return true;
@@ -274,18 +278,17 @@ export function calculateDeadlines(
     }
 
     // ISSUE-17 FIX: Bank holiday staleness warning.
-    // UK_BANK_HOLIDAYS_EW covers 2025–2028 only. If any deadline falls after 2028,
+    // If any deadline falls after the last year in our static calendar,
     // bank holiday extension may not be applied correctly.
-    const BANK_HOLIDAY_DATA_LAST_YEAR = 2028;
     const hasStaleDeadline = deadlines.some((d) => {
         const year = new Date(d.original_deadline).getUTCFullYear();
-        return year > BANK_HOLIDAY_DATA_LAST_YEAR;
+        return year > MAX_BANK_HOLIDAY_YEAR;
     });
     if (hasStaleDeadline) {
         warnings.push(
-            `WARNING: One or more deadlines fall after ${BANK_HOLIDAY_DATA_LAST_YEAR}. ` +
+            `WARNING: One or more deadlines fall after ${MAX_BANK_HOLIDAY_YEAR}. ` +
             "The bank holiday calendar used by this calculator only covers up to " +
-            `${BANK_HOLIDAY_DATA_LAST_YEAR}. Bank holiday extensions may not be applied correctly. ` +
+            `${MAX_BANK_HOLIDAY_YEAR}. Bank holiday extensions may not be applied correctly. ` +
             "Please verify your deadline against the GOV.UK bank holidays calendar."
         );
     }
