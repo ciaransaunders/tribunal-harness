@@ -66,7 +66,6 @@ export default function TribunalHarness() {
 
     // === Framework 1: Inverse Chatbot state ===
     const [inputMode, setInputMode] = useState("freeform"); // freeform | schema
-    const [selectedClaimType, setSelectedClaimType] = useState("unfair_dismissal");
     const [schemaValues, setSchemaValues] = useState({});
 
     // === Framework 3: Durable State Machine state ===
