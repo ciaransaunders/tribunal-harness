@@ -56,7 +56,6 @@ export default function TribunalHarness() {
     const [triageDoc, setTriageDoc] = useState(null);
     const [triageResults, setTriageResults] = useState(null);
     const [triageStage, setTriageStage] = useState("idle");
-    const [dragActive, setDragActive] = useState(false);
     const [triageAccepted, setTriageAccepted] = useState({});
 
     // Workflow state
