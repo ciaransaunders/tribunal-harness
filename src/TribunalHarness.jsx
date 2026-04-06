@@ -11,7 +11,6 @@ import {
 } from "./constants/prompts";
 import {
     LEGAL_DATA_GRAPH,
-    TASK_TEMPLATES,
     LEGAL_TEST_SCHEMAS
 } from "./constants/legalData";
 import { FSM_STATES } from "./constants/fsm";
@@ -60,9 +59,6 @@ export default function TribunalHarness() {
     const [triageAccepted, setTriageAccepted] = useState({});
 
     // Workflow state
-    const [weeklyBudgetHours, setWeeklyBudgetHours] = useState(4);
-    const [workflowTasks, setWorkflowTasks] = useState(() => TASK_TEMPLATES.map(t => ({ ...t, completed: false, active: false })));
-    const [timeSpentMins, setTimeSpentMins] = useState(0);
 
     // === Framework 1: Inverse Chatbot state ===
     const [inputMode, setInputMode] = useState("freeform"); // freeform | schema
