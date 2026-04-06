@@ -4,10 +4,7 @@ import "./styles/globals.css";
 // Constants & Prompts
 import {
     SYSTEM_PROMPT,
-    TRIAGE_SYSTEM_PROMPT,
-    DRAFTER_PROMPT,
-    CRITIC_PROMPT,
-    JUDGE_PROMPT
+    TRIAGE_SYSTEM_PROMPT
 } from "./constants/prompts";
 import {
     LEGAL_DATA_GRAPH,
@@ -22,7 +19,6 @@ import {
     addDays,
     formatDate
 } from "./utils/dateUtils";
-import { quarantineValidate } from "./utils/validation";
 import { loadFSMState, saveFSMState } from "./utils/fsmLogic";
 
 // Components
@@ -72,12 +68,6 @@ export default function TribunalHarness() {
     // === Framework 3: Durable State Machine state ===
     const [fsmState, setFsmState] = useState(() => loadFSMState());
 
-    // === Framework 4: Adversarial Shadow-Opponent state ===
-    const [debateResults, setDebateResults] = useState(null);
-    const [debateRunning, setDebateRunning] = useState(false);
-    const [debateStep, setDebateStep] = useState("");
-    const [showDebateLog, setShowDebateLog] = useState(false);
-
     // Persist FSM on change
     useEffect(() => { saveFSMState(fsmState); }, [fsmState]);
 
@@ -96,106 +86,6 @@ export default function TribunalHarness() {
         const initial = { currentState: "INTAKE", history: [{ state: "INTAKE", timestamp: new Date().toISOString(), event: "Case reset" }], pendingEvents: [] };
         setFsmState(initial);
         saveFSMState(initial);
-    };
-
-    // Shadow-Opponent debate loop
-    const runDebateLoop = async (claimText) => {
-        setDebateRunning(true);
-        setDebateResults(null);
-        const log = [];
-        const sourceList = LEGAL_DATA_GRAPH.statutes.map(s => `${s.name}: ${s.sections.map(sec => `${sec.ref} ${sec.title} [source:${sec.id}]`).join(", ")}`).join("\n") +
-            "\nJudgments: " + LEGAL_DATA_GRAPH.judgments.map(j => `${j.citation} [source:${j.id}]`).join(", ");
-
-        try {
-            // Round 1: Drafter
-            setDebateStep("Blue Team drafting initial argument...");
-            const draftRes = await fetch("https://api.anthropic.com/v1/messages", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-                body: JSON.stringify({
-                    model: "claude-sonnet-4-20250514", max_tokens: 2000,
-                    system: DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + sourceList,
-                    messages: [{ role: "user", content: `Draft an argument for this claim:\n\n${claimText}` }],
-                }),
-            });
-            const draftData = await draftRes.json();
-            const draftText = draftData.content.map(b => b.text || "").join("");
-            log.push({ agent: "Drafter", role: "blue", text: draftText });
-
-            // Round 1: Critic
-            setDebateStep("Red Team attacking argument...");
-            const critRes = await fetch("https://api.anthropic.com/v1/messages", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-                body: JSON.stringify({
-                    model: "claude-sonnet-4-20250514", max_tokens: 2000, system: CRITIC_PROMPT,
-                    messages: [{ role: "user", content: `Attack this claimant argument:\n\n${draftText}` }],
-                }),
-            });
-            const critData = await critRes.json();
-            const critText = critData.content.map(b => b.text || "").join("");
-            log.push({ agent: "Critic", role: "red", text: critText });
-
-            // Round 1: Judge
-            setDebateStep("Judge evaluating exchange...");
-            const judgeRes = await fetch("https://api.anthropic.com/v1/messages", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-                body: JSON.stringify({
-                    model: "claude-sonnet-4-20250514", max_tokens: 1000, system: JUDGE_PROMPT,
-                    messages: [{ role: "user", content: `Claimant argument:\n${draftText}\n\nRespondent attack:\n${critText}` }],
-                }),
-            });
-            const judgeData = await judgeRes.json();
-            const judgeRaw = judgeData.content.map(b => b.text || "").join("");
-            const judgeClean = judgeRaw.replace(/```json|```/g, "").trim();
-            let judgeVerdict;
-            try { judgeVerdict = JSON.parse(judgeClean); } catch { judgeVerdict = { score: 50, verdict: "pass", strengths: [], weaknesses: ["Could not parse judge response"], revision_guidance: "" }; }
-            log.push({ agent: "Judge", role: "judge", text: JSON.stringify(judgeVerdict, null, 2), parsed: judgeVerdict });
-
-            let finalArg = draftText;
-
-            // Round 2 if needed
-            if (judgeVerdict.verdict === "needs_revision" && judgeVerdict.revision_guidance) {
-                setDebateStep("Blue Team revising based on critique...");
-                const revRes = await fetch("https://api.anthropic.com/v1/messages", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-                    body: JSON.stringify({
-                        model: "claude-sonnet-4-20250514", max_tokens: 2000,
-                        system: DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + sourceList,
-                        messages: [
-                            { role: "user", content: `Draft an argument for this claim:\n\n${claimText}` },
-                            { role: "assistant", content: draftText },
-                            { role: "user", content: `The Judge found weaknesses. Revise your argument:\n\nCritique: ${critText}\n\nJudge guidance: ${judgeVerdict.revision_guidance}` },
-                        ],
-                    }),
-                });
-                const revData = await revRes.json();
-                finalArg = revData.content.map(b => b.text || "").join("");
-                log.push({ agent: "Drafter (Revised)", role: "blue", text: finalArg });
-            }
-
-            const quarantine = quarantineValidate(finalArg);
-
-            setDebateResults({
-                finalArgument: quarantine.cleanText,
-                rawArgument: finalArg,
-                log,
-                judgeScore: judgeVerdict.score,
-                judgeVerdict: judgeVerdict.verdict,
-                strengths: judgeVerdict.strengths || [],
-                weaknesses: judgeVerdict.weaknesses || [],
-                rounds: judgeVerdict.verdict === "needs_revision" ? 2 : 1,
-                quarantine,
-            });
-        } catch (err) {
-            console.error(err);
-            setError("Debate failed: " + err.message);
-        } finally {
-            setDebateRunning(false);
-            setDebateStep("");
-        }
     };
 
     const processTriageFile = async (file) => {
