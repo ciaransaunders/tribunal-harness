@@ -9,7 +9,7 @@ import { loadFSMState, saveFSMState } from './utils/fsmLogic';
 import { FSM_STATES } from './constants/fsm';
 import { LEGAL_TEST_SCHEMAS, LEGAL_DATA_GRAPH } from './constants/legalData';
 import { SYSTEM_PROMPT, TRIAGE_SYSTEM_PROMPT } from './constants/prompts';
-import { formatDate, threeMonthsLessOneDay } from './utils/dateUtils';
+import { formatDate } from './utils/dateUtils';
 
 const TABS = [
     { id: 'analysis', label: 'Analysis', icon: '⚖️' },
