@@ -57,7 +57,6 @@ export default function TribunalHarness() {
     const [triageResults, setTriageResults] = useState(null);
     const [triageStage, setTriageStage] = useState("idle");
     const [dragActive, setDragActive] = useState(false);
-    const [triageAccepted, setTriageAccepted] = useState({});
 
     // Workflow state
     const [weeklyBudgetHours, setWeeklyBudgetHours] = useState(4);
@@ -201,7 +200,6 @@ export default function TribunalHarness() {
     const processTriageFile = async (file) => {
         setTriageStage("processing");
         setTriageDoc({ name: file.name, size: file.size, type: file.type });
-        setTriageAccepted({});
         try {
             const text = await file.text();
             const truncated = text.slice(0, 8000);
