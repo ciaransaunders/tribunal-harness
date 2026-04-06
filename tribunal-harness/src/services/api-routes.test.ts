@@ -252,3 +252,43 @@ describe("GET /api/case-law/search", () => {
         });
     });
 });
+
+// ---------------------------------------------------------------------------
+// /api/roadmap
+// ---------------------------------------------------------------------------
+describe("POST /api/roadmap", () => {
+    let POST: (req: NextRequest) => Promise<Response>;
+
+    beforeEach(async () => {
+        const mod = await import("../app/api/roadmap/route");
+        POST = mod.POST;
+    });
+
+    it("returns 400 if dateOfLastAct is missing", async () => {
+        const req = makeRequest({ claimType: "unfair_dismissal" });
+        const res = await POST(req);
+        expect(res.status).toBe(400);
+        const json = await res.json();
+        expect(json.error).toBe("dateOfLastAct is required");
+    });
+
+    it("returns 200 and roadmap stages for valid dateOfLastAct without claimType", async () => {
+        const req = makeRequest({ dateOfLastAct: "2025-06-15" });
+        const res = await POST(req);
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(Array.isArray(json)).toBe(true);
+        expect(json.length).toBeGreaterThan(0);
+        expect(json[0].level).toBe("Employment Tribunal");
+        expect(json[0].steps).toBeDefined();
+    });
+
+    it("returns 200 and roadmap stages for valid dateOfLastAct with claimType", async () => {
+        const req = makeRequest({ dateOfLastAct: "2025-06-15", claimType: "fire_and_rehire" });
+        const res = await POST(req);
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(Array.isArray(json)).toBe(true);
+        expect(json[0].level).toBe("Employment Tribunal");
+    });
+});
