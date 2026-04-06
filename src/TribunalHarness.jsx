@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Fragment } from "react";
+import React, { useState, useEffect } from "react";
 import "./styles/globals.css";
 
 // Constants & Prompts
@@ -11,62 +11,37 @@ import {
 } from "./constants/prompts";
 import {
     LEGAL_DATA_GRAPH,
-    TASK_TEMPLATES,
-    LEGAL_TEST_SCHEMAS
+    TASK_TEMPLATES
 } from "./constants/legalData";
 import { FSM_STATES } from "./constants/fsm";
 
 // Utilities
-import {
-    threeMonthsLessOneDay,
-    addDays,
-    formatDate
-} from "./utils/dateUtils";
 import { quarantineValidate } from "./utils/validation";
 import { loadFSMState, saveFSMState } from "./utils/fsmLogic";
-
-// Components
-import TrustBadge from "./components/shared/TrustBadge";
-import StrengthIndicator from "./components/shared/StrengthIndicator";
 
 export default function TribunalHarness() {
     const [stage, setStage] = useState("input"); // input, analyzing, results
     const [situation, setSituation] = useState("");
-    const [dates, setDates] = useState({
-        lastAct: "",
-        dismissal: "",
-        grievance: "",
-    });
     const [results, setResults] = useState(null);
-    const [timeline, setTimeline] = useState([]);
     const [activeTab, setActiveTab] = useState("claims");
     const [error, setError] = useState(null);
     const [analysisStep, setAnalysisStep] = useState("");
-    const [expandedClaim, setExpandedClaim] = useState(null);
-    const [expandedStage, setExpandedStage] = useState("Employment Tribunal");
 
     const [apiKey, setApiKey] = useState(() => {
         try { return localStorage.getItem("tribunal_harness_api_key") || ""; } catch { return ""; }
-    });
-    const [storageAvailable] = useState(() => {
-        try { localStorage.setItem("__test", "1"); localStorage.removeItem("__test"); return true; } catch { return false; }
     });
 
     // Triage state
     const [triageDoc, setTriageDoc] = useState(null);
     const [triageResults, setTriageResults] = useState(null);
     const [triageStage, setTriageStage] = useState("idle");
-    const [dragActive, setDragActive] = useState(false);
     const [triageAccepted, setTriageAccepted] = useState({});
 
     // Workflow state
-    const [weeklyBudgetHours, setWeeklyBudgetHours] = useState(4);
     const [workflowTasks, setWorkflowTasks] = useState(() => TASK_TEMPLATES.map(t => ({ ...t, completed: false, active: false })));
-    const [timeSpentMins, setTimeSpentMins] = useState(0);
 
     // === Framework 1: Inverse Chatbot state ===
     const [inputMode, setInputMode] = useState("freeform"); // freeform | schema
-    const [selectedClaimType, setSelectedClaimType] = useState("unfair_dismissal");
     const [schemaValues, setSchemaValues] = useState({});
 
     // === Framework 3: Durable State Machine state ===
@@ -76,7 +51,6 @@ export default function TribunalHarness() {
     const [debateResults, setDebateResults] = useState(null);
     const [debateRunning, setDebateRunning] = useState(false);
     const [debateStep, setDebateStep] = useState("");
-    const [showDebateLog, setShowDebateLog] = useState(false);
 
     // Persist FSM on change
     useEffect(() => { saveFSMState(fsmState); }, [fsmState]);
