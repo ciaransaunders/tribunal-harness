@@ -6,6 +6,7 @@ import {
     CRITIC_PROMPT,
     JUDGE_PROMPT
 } from '../../constants/prompts';
+import { ANTHROPIC_API_URL } from '../../constants/api';
 
 function AgentCard({ entry, isExpanded, onToggle }) {
     const roleConfig = {
@@ -102,7 +103,7 @@ export default function DebatePanel({ results, debateResults, debateRunning, deb
             "\nJudgments: " + LEGAL_DATA_GRAPH.judgments.map(j => `${j.citation} [source:${j.id}]`).join(", ");
 
         const callAPI = async (system, messages, maxTokens = 2000) => {
-            const res = await fetch("https://api.anthropic.com/v1/messages", {
+            const res = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
                 body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: maxTokens, system, messages }),
