@@ -7,7 +7,7 @@ import StrengthIndicator from './components/shared/StrengthIndicator';
 import { quarantineValidate } from './utils/validation';
 import { loadFSMState, saveFSMState } from './utils/fsmLogic';
 import { FSM_STATES } from './constants/fsm';
-import { LEGAL_TEST_SCHEMAS, LEGAL_DATA_GRAPH } from './constants/legalData';
+import { LEGAL_TEST_SCHEMAS, LEGAL_DATA_GRAPH, LEGAL_DATA_GRAPH_SOURCE_LIST } from './constants/legalData';
 import { SYSTEM_PROMPT, TRIAGE_SYSTEM_PROMPT } from './constants/prompts';
 import { formatDate, threeMonthsLessOneDay } from './utils/dateUtils';
 
@@ -103,10 +103,6 @@ export default function TribunalHarnessNoir() {
 
         try {
             const claimText = buildClaimText();
-            const sourceList = LEGAL_DATA_GRAPH.statutes.map(s =>
-                `${s.name}: ${s.sections.map(sec => `${sec.ref} ${sec.title} [source:${sec.id}]`).join(", ")}`
-            ).join("\n") +
-                "\nJudgments: " + LEGAL_DATA_GRAPH.judgments.map(j => `${j.citation} [source:${j.id}]`).join(", ");
 
             const messages = [{ role: "user", content: claimText }];
             const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -120,7 +116,7 @@ export default function TribunalHarnessNoir() {
                 body: JSON.stringify({
                     model: 'claude-sonnet-4-20250514',
                     max_tokens: 4096,
-                    system: SYSTEM_PROMPT + "\n\nLegal Data Graph:\n" + sourceList,
+                    system: SYSTEM_PROMPT + "\n\nLegal Data Graph:\n" + LEGAL_DATA_GRAPH_SOURCE_LIST,
                     messages,
                 }),
             });

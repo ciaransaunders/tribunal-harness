@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { quarantineValidate } from '../../utils/validation';
-import { LEGAL_DATA_GRAPH } from '../../constants/legalData';
+import { LEGAL_DATA_GRAPH, LEGAL_DATA_GRAPH_SOURCE_LIST } from '../../constants/legalData';
 import {
     DRAFTER_PROMPT,
     CRITIC_PROMPT,
@@ -96,11 +96,6 @@ export default function DebatePanel({ results, debateResults, debateRunning, deb
         setDebateResults(null);
         const log = [];
 
-        const sourceList = LEGAL_DATA_GRAPH.statutes.map(s =>
-            `${s.name}: ${s.sections.map(sec => `${sec.ref} ${sec.title} [source:${sec.id}]`).join(", ")}`
-        ).join("\n") +
-            "\nJudgments: " + LEGAL_DATA_GRAPH.judgments.map(j => `${j.citation} [source:${j.id}]`).join(", ");
-
         const callAPI = async (system, messages, maxTokens = 2000) => {
             const res = await fetch("https://api.anthropic.com/v1/messages", {
                 method: "POST",
@@ -116,7 +111,7 @@ export default function DebatePanel({ results, debateResults, debateRunning, deb
             // Round 1: Drafter
             setDebateStep("Blue Team drafting initial argument...");
             const draftText = await callAPI(
-                DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + sourceList,
+                DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + LEGAL_DATA_GRAPH_SOURCE_LIST,
                 [{ role: "user", content: `Draft an argument for this claim:\n\n${claimText}` }]
             );
             log.push({ agent: "Drafter", role: "blue", text: draftText });
@@ -149,7 +144,7 @@ export default function DebatePanel({ results, debateResults, debateRunning, deb
             if (judgeVerdict.verdict === "needs_revision" && judgeVerdict.revision_guidance) {
                 setDebateStep("Blue Team revising based on critique...");
                 finalArg = await callAPI(
-                    DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + sourceList,
+                    DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + LEGAL_DATA_GRAPH_SOURCE_LIST,
                     [
                         { role: "user", content: `Draft an argument for this claim:\n\n${claimText}` },
                         { role: "assistant", content: draftText },
