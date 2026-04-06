@@ -24,6 +24,7 @@ import {
 } from "./utils/dateUtils";
 import { quarantineValidate } from "./utils/validation";
 import { loadFSMState, saveFSMState } from "./utils/fsmLogic";
+import { ANTHROPIC_API_URL } from "./constants/api";
 
 // Components
 import TrustBadge from "./components/shared/TrustBadge";
@@ -109,7 +110,7 @@ export default function TribunalHarness() {
         try {
             // Round 1: Drafter
             setDebateStep("Blue Team drafting initial argument...");
-            const draftRes = await fetch("https://api.anthropic.com/v1/messages", {
+            const draftRes = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
                 body: JSON.stringify({
@@ -124,7 +125,7 @@ export default function TribunalHarness() {
 
             // Round 1: Critic
             setDebateStep("Red Team attacking argument...");
-            const critRes = await fetch("https://api.anthropic.com/v1/messages", {
+            const critRes = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
                 body: JSON.stringify({
@@ -138,7 +139,7 @@ export default function TribunalHarness() {
 
             // Round 1: Judge
             setDebateStep("Judge evaluating exchange...");
-            const judgeRes = await fetch("https://api.anthropic.com/v1/messages", {
+            const judgeRes = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
                 body: JSON.stringify({
@@ -158,7 +159,7 @@ export default function TribunalHarness() {
             // Round 2 if needed
             if (judgeVerdict.verdict === "needs_revision" && judgeVerdict.revision_guidance) {
                 setDebateStep("Blue Team revising based on critique...");
-                const revRes = await fetch("https://api.anthropic.com/v1/messages", {
+                const revRes = await fetch(ANTHROPIC_API_URL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
                     body: JSON.stringify({
@@ -205,7 +206,7 @@ export default function TribunalHarness() {
         try {
             const text = await file.text();
             const truncated = text.slice(0, 8000);
-            const response = await fetch("https://api.anthropic.com/v1/messages", {
+            const response = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
                 body: JSON.stringify({
@@ -248,7 +249,7 @@ export default function TribunalHarness() {
         }
 
         try {
-            const response = await fetch("https://api.anthropic.com/v1/messages", {
+            const response = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
                 body: JSON.stringify({
