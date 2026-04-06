@@ -12,7 +12,8 @@ import {
 import {
     LEGAL_DATA_GRAPH,
     TASK_TEMPLATES,
-    LEGAL_TEST_SCHEMAS
+    LEGAL_TEST_SCHEMAS,
+    PRECOMPUTED_SOURCE_LIST
 } from "./constants/legalData";
 import { FSM_STATES } from "./constants/fsm";
 
@@ -103,8 +104,6 @@ export default function TribunalHarness() {
         setDebateRunning(true);
         setDebateResults(null);
         const log = [];
-        const sourceList = LEGAL_DATA_GRAPH.statutes.map(s => `${s.name}: ${s.sections.map(sec => `${sec.ref} ${sec.title} [source:${sec.id}]`).join(", ")}`).join("\n") +
-            "\nJudgments: " + LEGAL_DATA_GRAPH.judgments.map(j => `${j.citation} [source:${j.id}]`).join(", ");
 
         try {
             // Round 1: Drafter
@@ -114,7 +113,7 @@ export default function TribunalHarness() {
                 headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
                 body: JSON.stringify({
                     model: "claude-sonnet-4-20250514", max_tokens: 2000,
-                    system: DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + sourceList,
+                    system: DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + PRECOMPUTED_SOURCE_LIST,
                     messages: [{ role: "user", content: `Draft an argument for this claim:\n\n${claimText}` }],
                 }),
             });
@@ -163,7 +162,7 @@ export default function TribunalHarness() {
                     headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
                     body: JSON.stringify({
                         model: "claude-sonnet-4-20250514", max_tokens: 2000,
-                        system: DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + sourceList,
+                        system: DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + PRECOMPUTED_SOURCE_LIST,
                         messages: [
                             { role: "user", content: `Draft an argument for this claim:\n\n${claimText}` },
                             { role: "assistant", content: draftText },

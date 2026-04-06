@@ -59,6 +59,9 @@ export const TASK_TEMPLATES = [
     { id: "t10", label: "File management and indexing", leverage: 15, estimatedMins: 15, category: "admin", description: "Organise digital files, update case index, ensure naming conventions." },
 ];
 
+export const PRECOMPUTED_SOURCE_LIST = LEGAL_DATA_GRAPH.statutes.map(s => `${s.name}: ${s.sections.map(sec => `${sec.ref} ${sec.title} [source:${sec.id}]`).join(", ")}`).join("\n") +
+    "\nJudgments: " + LEGAL_DATA_GRAPH.judgments.map(j => `${j.citation} [source:${j.id}]`).join(", ");
+
 export const LEGAL_TEST_SCHEMAS = {
     unfair_dismissal: {
         label: "Unfair Dismissal",
