@@ -54,7 +54,6 @@ export default function TribunalHarness() {
 
     // Triage state
     const [triageDoc, setTriageDoc] = useState(null);
-    const [triageResults, setTriageResults] = useState(null);
     const [triageStage, setTriageStage] = useState("idle");
     const [dragActive, setDragActive] = useState(false);
     const [triageAccepted, setTriageAccepted] = useState({});
@@ -225,7 +224,6 @@ export default function TribunalHarness() {
                 if (jsonMatch) { parsed = JSON.parse(jsonMatch[0]); }
                 else { throw new Error("Could not parse triage response as JSON."); }
             }
-            setTriageResults(parsed);
             setTriageStage("complete");
             setActiveTab("triage");
             if (stage === "input") setStage("results");
