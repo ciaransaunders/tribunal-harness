@@ -54,7 +54,6 @@ export default function TribunalHarness() {
     });
 
     // Triage state
-    const [triageDoc, setTriageDoc] = useState(null);
     const [triageResults, setTriageResults] = useState(null);
     const [triageStage, setTriageStage] = useState("idle");
     const [dragActive, setDragActive] = useState(false);
@@ -200,7 +199,6 @@ export default function TribunalHarness() {
 
     const processTriageFile = async (file) => {
         setTriageStage("processing");
-        setTriageDoc({ name: file.name, size: file.size, type: file.type });
         setTriageAccepted({});
         try {
             const text = await file.text();
