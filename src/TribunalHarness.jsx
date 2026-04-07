@@ -111,7 +111,7 @@ export default function TribunalHarness() {
             setDebateStep("Blue Team drafting initial argument...");
             const draftRes = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                 body: JSON.stringify({
                     model: "claude-sonnet-4-20250514", max_tokens: 2000,
                     system: DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + sourceList,
@@ -126,7 +126,7 @@ export default function TribunalHarness() {
             setDebateStep("Red Team attacking argument...");
             const critRes = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                 body: JSON.stringify({
                     model: "claude-sonnet-4-20250514", max_tokens: 2000, system: CRITIC_PROMPT,
                     messages: [{ role: "user", content: `Attack this claimant argument:\n\n${draftText}` }],
@@ -140,7 +140,7 @@ export default function TribunalHarness() {
             setDebateStep("Judge evaluating exchange...");
             const judgeRes = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                 body: JSON.stringify({
                     model: "claude-sonnet-4-20250514", max_tokens: 1000, system: JUDGE_PROMPT,
                     messages: [{ role: "user", content: `Claimant argument:\n${draftText}\n\nRespondent attack:\n${critText}` }],
@@ -160,7 +160,7 @@ export default function TribunalHarness() {
                 setDebateStep("Blue Team revising based on critique...");
                 const revRes = await fetch(ANTHROPIC_API_URL, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+                    headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                     body: JSON.stringify({
                         model: "claude-sonnet-4-20250514", max_tokens: 2000,
                         system: DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + sourceList,
@@ -207,7 +207,7 @@ export default function TribunalHarness() {
             const truncated = text.slice(0, 8000);
             const response = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                 body: JSON.stringify({
                     model: "claude-sonnet-4-20250514",
                     max_tokens: 4000,
