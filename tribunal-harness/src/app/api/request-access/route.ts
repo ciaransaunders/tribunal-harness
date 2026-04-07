@@ -30,7 +30,11 @@ async function sendEmailNotification(data: Record<string, unknown>): Promise<voi
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) return; // Email not configured — skip silently
 
-    const notifyEmail = process.env.NOTIFY_EMAIL || "hello@tribunalharness.co.uk";
+    const notifyEmail = process.env.NOTIFY_EMAIL;
+    if (!notifyEmail) {
+        console.warn("[Request Access] RESEND_API_KEY is set, but NOTIFY_EMAIL is missing. Email notification skipped.");
+        return;
+    }
 
     try {
         await fetch("https://api.resend.com/emails", {
