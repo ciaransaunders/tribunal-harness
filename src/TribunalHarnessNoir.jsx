@@ -10,6 +10,7 @@ import { FSM_STATES } from './constants/fsm';
 import { LEGAL_TEST_SCHEMAS, LEGAL_DATA_GRAPH } from './constants/legalData';
 import { SYSTEM_PROMPT, TRIAGE_SYSTEM_PROMPT } from './constants/prompts';
 import { formatDate, threeMonthsLessOneDay } from './utils/dateUtils';
+import { ANTHROPIC_API_URL } from './constants/api';
 
 const TABS = [
     { id: 'analysis', label: 'Analysis', icon: '⚖️' },
@@ -109,13 +110,12 @@ export default function TribunalHarnessNoir() {
                 "\nJudgments: " + LEGAL_DATA_GRAPH.judgments.map(j => `${j.citation} [source:${j.id}]`).join(", ");
 
             const messages = [{ role: "user", content: claimText }];
-            const res = await fetch('https://api.anthropic.com/v1/messages', {
+            const res = await fetch(ANTHROPIC_API_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'x-api-key': apiKey,
                     'anthropic-version': '2023-06-01',
-                    'anthropic-dangerous-direct-browser-access': 'true',
                 },
                 body: JSON.stringify({
                     model: 'claude-sonnet-4-20250514',
@@ -144,13 +144,12 @@ export default function TribunalHarnessNoir() {
     const processTriageFile = async (file) => {
         try {
             const text = await file.text();
-            const res = await fetch('https://api.anthropic.com/v1/messages', {
+            const res = await fetch(ANTHROPIC_API_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'x-api-key': apiKey,
                     'anthropic-version': '2023-06-01',
-                    'anthropic-dangerous-direct-browser-access': 'true',
                 },
                 body: JSON.stringify({
                     model: 'claude-sonnet-4-20250514',

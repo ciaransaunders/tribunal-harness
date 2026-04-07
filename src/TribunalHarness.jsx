@@ -24,6 +24,7 @@ import {
 } from "./utils/dateUtils";
 import { quarantineValidate } from "./utils/validation";
 import { loadFSMState, saveFSMState } from "./utils/fsmLogic";
+import { ANTHROPIC_API_URL } from "./constants/api";
 
 // Components
 import TrustBadge from "./components/shared/TrustBadge";
@@ -53,13 +54,11 @@ export default function TribunalHarness() {
     });
 
     // Triage state
-    const [triageDoc, setTriageDoc] = useState(null);
     const [triageResults, setTriageResults] = useState(null);
     const [triageStage, setTriageStage] = useState("idle");
     const [dragActive, setDragActive] = useState(false);
 
     // Workflow state
-    const [weeklyBudgetHours, setWeeklyBudgetHours] = useState(4);
     const [workflowTasks, setWorkflowTasks] = useState(() => TASK_TEMPLATES.map(t => ({ ...t, completed: false, active: false })));
     const [timeSpentMins, setTimeSpentMins] = useState(0);
 
@@ -108,9 +107,9 @@ export default function TribunalHarness() {
         try {
             // Round 1: Drafter
             setDebateStep("Blue Team drafting initial argument...");
-            const draftRes = await fetch("https://api.anthropic.com/v1/messages", {
+            const draftRes = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                 body: JSON.stringify({
                     model: "claude-sonnet-4-20250514", max_tokens: 2000,
                     system: DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + sourceList,
@@ -123,9 +122,9 @@ export default function TribunalHarness() {
 
             // Round 1: Critic
             setDebateStep("Red Team attacking argument...");
-            const critRes = await fetch("https://api.anthropic.com/v1/messages", {
+            const critRes = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                 body: JSON.stringify({
                     model: "claude-sonnet-4-20250514", max_tokens: 2000, system: CRITIC_PROMPT,
                     messages: [{ role: "user", content: `Attack this claimant argument:\n\n${draftText}` }],
@@ -137,9 +136,9 @@ export default function TribunalHarness() {
 
             // Round 1: Judge
             setDebateStep("Judge evaluating exchange...");
-            const judgeRes = await fetch("https://api.anthropic.com/v1/messages", {
+            const judgeRes = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                 body: JSON.stringify({
                     model: "claude-sonnet-4-20250514", max_tokens: 1000, system: JUDGE_PROMPT,
                     messages: [{ role: "user", content: `Claimant argument:\n${draftText}\n\nRespondent attack:\n${critText}` }],
@@ -157,9 +156,9 @@ export default function TribunalHarness() {
             // Round 2 if needed
             if (judgeVerdict.verdict === "needs_revision" && judgeVerdict.revision_guidance) {
                 setDebateStep("Blue Team revising based on critique...");
-                const revRes = await fetch("https://api.anthropic.com/v1/messages", {
+                const revRes = await fetch(ANTHROPIC_API_URL, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+                    headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                     body: JSON.stringify({
                         model: "claude-sonnet-4-20250514", max_tokens: 2000,
                         system: DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + sourceList,
@@ -199,13 +198,12 @@ export default function TribunalHarness() {
 
     const processTriageFile = async (file) => {
         setTriageStage("processing");
-        setTriageDoc({ name: file.name, size: file.size, type: file.type });
         try {
             const text = await file.text();
             const truncated = text.slice(0, 8000);
-            const response = await fetch("https://api.anthropic.com/v1/messages", {
+            const response = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                 body: JSON.stringify({
                     model: "claude-sonnet-4-20250514",
                     max_tokens: 4000,
@@ -246,7 +244,7 @@ export default function TribunalHarness() {
         }
 
         try {
-            const response = await fetch("https://api.anthropic.com/v1/messages", {
+            const response = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
                 body: JSON.stringify({
