@@ -105,7 +105,7 @@ export default function DebatePanel({ results, debateResults, debateRunning, deb
         const callAPI = async (system, messages, maxTokens = 2000) => {
             const res = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                 body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: maxTokens, system, messages }),
             });
             if (!res.ok) throw new Error(`API error: ${res.status}`);
