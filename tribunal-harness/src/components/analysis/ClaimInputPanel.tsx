@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useId } from "react";
 import Link from "next/link";
 import { CLAIM_TYPES } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +23,8 @@ export function ClaimInputPanel({ onAnalyse, onDrop, isAnalysing }: ClaimInputPa
     const [narrative, setNarrative] = useState("");
     const [isDragging, setIsDragging] = useState(false);
     const [hasConsented, setHasConsented] = useState(false);
+
+    const id = useId();
 
     const handleDrop = useCallback(
         (e: React.DragEvent) => {
@@ -62,10 +64,11 @@ export function ClaimInputPanel({ onAnalyse, onDrop, isAnalysing }: ClaimInputPa
             <Card variant="glass" style={{ transform: "translateX(2rem)" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
                     <div>
-                        <label style={{ display: "block", fontSize: "0.7rem", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
+                        <label htmlFor={`${id}-claim-type`} style={{ display: "block", fontSize: "0.7rem", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
                             Claim Type
                         </label>
                         <select
+                            id={`${id}-claim-type`}
                             value={claimType}
                             onChange={(e) => setClaimType(e.target.value)}
                             style={{
@@ -83,10 +86,11 @@ export function ClaimInputPanel({ onAnalyse, onDrop, isAnalysing }: ClaimInputPa
                     </div>
 
                     <div>
-                        <label style={{ display: "block", fontSize: "0.7rem", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
+                        <label htmlFor={`${id}-date-of-act`} style={{ display: "block", fontSize: "0.7rem", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
                             Date of Act
                         </label>
                         <input
+                            id={`${id}-date-of-act`}
                             type="date"
                             value={dateOfLastAct}
                             onChange={(e) => setDateOfLastAct(e.target.value)}
@@ -102,10 +106,11 @@ export function ClaimInputPanel({ onAnalyse, onDrop, isAnalysing }: ClaimInputPa
                     </div>
 
                     <div>
-                        <label style={{ display: "block", fontSize: "0.7rem", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
+                        <label htmlFor={`${id}-case-facts`} style={{ display: "block", fontSize: "0.7rem", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
                             Facts
                         </label>
                         <textarea
+                            id={`${id}-case-facts`}
                             rows={3}
                             placeholder="Describe what happened..."
                             value={narrative}
@@ -119,8 +124,9 @@ export function ClaimInputPanel({ onAnalyse, onDrop, isAnalysing }: ClaimInputPa
                     </div>
 
                     <div style={{ padding: "0.75rem", background: "rgba(255,255,255,0.03)", borderRadius: "var(--radius-card)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                        <label style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", cursor: "pointer" }}>
+                        <label htmlFor={`${id}-consent-checkbox`} style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", cursor: "pointer" }}>
                             <input
+                                id={`${id}-consent-checkbox`}
                                 type="checkbox"
                                 checked={hasConsented}
                                 onChange={(e) => setHasConsented(e.target.checked)}
