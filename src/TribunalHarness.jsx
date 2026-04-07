@@ -46,9 +46,7 @@ export default function TribunalHarness() {
     const [expandedClaim, setExpandedClaim] = useState(null);
     const [expandedStage, setExpandedStage] = useState("Employment Tribunal");
 
-    const [apiKey, setApiKey] = useState(() => {
-        try { return localStorage.getItem("tribunal_harness_api_key") || ""; } catch { return ""; }
-    });
+    const [apiKey, setApiKey] = useState("");
     const [storageAvailable] = useState(() => {
         try { localStorage.setItem("__test", "1"); localStorage.removeItem("__test"); return true; } catch { return false; }
     });
