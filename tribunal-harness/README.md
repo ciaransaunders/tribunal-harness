@@ -42,6 +42,8 @@ npm run start    # Serve production build
 npm run test     # Run Vitest unit tests
 ```
 
+Note: To test webhook endpoints locally, ensure `WEBHOOK_SECRET` is configured in your `.env.local` file.
+
 ## Key Architectural Notes
 
 - All ERA 2025 commencement dates are centralised in `src/lib/constants.ts`. Never hardcode dates elsewhere.

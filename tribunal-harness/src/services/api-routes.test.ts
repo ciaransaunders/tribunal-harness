@@ -137,6 +137,7 @@ describe("GET /api/schema/[claimType]", () => {
         expect(res.status).toBe(404);
         const json = await res.json();
         expect(json.error).toBeDefined();
+        expect(json.available_types).toBeDefined();
     });
 
     it("returns ERA 2025 schema for fire_and_rehire", async () => {
