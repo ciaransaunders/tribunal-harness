@@ -202,6 +202,40 @@ describe("POST /api/analyse — degraded mode", () => {
 // ---------------------------------------------------------------------------
 // /api/case-law/search
 // ---------------------------------------------------------------------------
+import { vi } from 'vitest';
+
+// ---------------------------------------------------------------------------
+// /api/case-law/search
+// ---------------------------------------------------------------------------
+
+// Mock Supabase for tests since we can't reliably connect to a database during CI
+vi.mock('@/lib/supabase', () => ({
+    supabase: {
+        from: vi.fn(() => ({
+            select: vi.fn(() => {
+                const mockQuery = {
+                    eq: vi.fn().mockReturnThis(),
+                    contains: vi.fn().mockReturnThis(),
+                    then: (resolve: any) => resolve({
+                        data: [
+                            {
+                                id: "polkey",
+                                case_name: "Polkey v AE Dayton",
+                                claim_types: ["unfair_dismissal", "whistleblowing", "fire_and_rehire"],
+                                tier: "binding",
+                                summary: "Test Polkey summary",
+                                citation: "Test Citation"
+                            }
+                        ],
+                        error: null
+                    })
+                };
+                return mockQuery;
+            })
+        }))
+    }
+}));
+
 describe("GET /api/case-law/search", () => {
     let GET: (req: NextRequest) => Promise<Response>;
 
