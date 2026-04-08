@@ -162,10 +162,7 @@ export default function InputPanel({
                     <input
                         type="password"
                         value={apiKey}
-                        onChange={(e) => {
-                            setApiKey(e.target.value);
-                            try { localStorage.setItem("tribunal_harness_api_key", e.target.value); } catch { }
-                        }}
+                        onChange={(e) => setApiKey(e.target.value)}
                         placeholder="sk-ant-..."
                         className="noir-input"
                     />
