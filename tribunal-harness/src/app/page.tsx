@@ -158,6 +158,35 @@ export default function HomePage() {
                     </div>
                 </motion.section>
             )}
+
+            {/* Testimonials Scaffolding */}
+            {stage === "input" && (
+                <section className="page-section" style={{ borderTop: "1px solid var(--color-border-subtle)", marginTop: "0" }}>
+                    <div style={{ maxWidth: "800px", margin: "0 auto", textAlign: "center" }}>
+                        <h2 className="text-3xl font-serif mb-4">What Our Users Say</h2>
+                        <p className="text-gray-400 mb-8">Testimonials coming soon.</p>
+                        {/* Add testimonial cards here in the future */}
+                    </div>
+                </section>
+            )}
+
+            {/* Advisory Board Scaffolding */}
+            {stage === "input" && (
+                <section className="page-section" style={{ borderTop: "1px solid var(--color-border-subtle)", marginTop: "0" }}>
+                    <div style={{ maxWidth: "1200px", margin: "0 auto", textAlign: "center" }}>
+                        <h2 className="text-3xl font-serif mb-4">Advisory Board</h2>
+                        <p className="text-gray-400 mb-8">Guided by leading experts in employment law and legal technology.</p>
+                        {/* Add advisory board profiles here in the future */}
+                        <div style={{ display: "flex", justifyContent: "center", gap: "2rem", flexWrap: "wrap", opacity: 0.5 }}>
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} style={{ width: "200px", height: "250px", border: "1px dashed var(--color-border-subtle)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    Profile {i}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            )}
         </div>
     );
 }

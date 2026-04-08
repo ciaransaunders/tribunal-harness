@@ -5,13 +5,14 @@ import { cn } from "@/lib/ui-utils";
 import { ShieldCheck, CircleAlert, XCircle } from "lucide-react";
 
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-    variant?: "verified" | "warning" | "unverified" | "quarantined" | "neutral";
+    variant?: "verified" | "check" | "warning" | "unverified" | "quarantined" | "neutral";
 }
 
 const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
     ({ className, variant = "neutral", children, ...props }, ref) => {
         const variants = {
             verified: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+            check: "bg-amber-500/10 text-amber-400 border-amber-500/30",
             warning: "bg-amber-500/10 text-amber-400 border-amber-500/30",
             unverified: "bg-red-500/10 text-red-400 border-red-500/30",
             quarantined: "bg-red-500/10 text-red-400 border-red-500/30",
@@ -20,6 +21,7 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
 
         const icons = {
             verified: <ShieldCheck className="w-3 h-3 mr-1" />,
+            check: <CircleAlert className="w-3 h-3 mr-1" />,
             warning: <CircleAlert className="w-3 h-3 mr-1" />,
             unverified: <XCircle className="w-3 h-3 mr-1" />,
             quarantined: <XCircle className="w-3 h-3 mr-1" />,

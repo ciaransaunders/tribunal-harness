@@ -1,11 +1,34 @@
 @import "tailwindcss";
 
+@custom-variant nav (@media (min-width: 900px));
+
 /* ============================================
    DESIGN SYSTEM: TRIBUNAL HARNESS / FLANK
    Ported from tribunal_harness_v2.html
    ============================================ */
 
 @theme {
+    /* Typography from tailwind.config.js */
+    --font-serif: "Cormorant Garamond", serif;
+    --font-sans: "Outfit", sans-serif;
+    --font-mono: "Fira Code", monospace;
+
+    /* Legacy colors from tailwind.config.js */
+    --color-noir-bg: #050505;
+    --color-noir-card: #0A0A0A;
+    --color-noir-border: rgba(255,255,255,0.08);
+
+    --color-sage: #C8C9A6;
+    --color-sage-dim: #b3b492;
+
+    --color-purple-accent: #7B6BF5;
+    --color-purple-glow: rgba(123,107,245,0.2);
+
+    --color-coral: #E85D5D;
+
+    --radius-card: 12px;
+    --radius-pill: 100px;
+
     /* Palette */
     --color-bg-primary: #000000;
     /* Pure Black */
@@ -730,3 +753,24 @@ h6 {
      </div>
    </div>
 */
+/* Theme Light fixes for Nav Dropdown */
+.theme-light .theme-dropdown-bg {
+    background: #ffffff !important;
+    border: 1px solid rgba(0,0,0,0.08) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.theme-light .theme-dropdown-link {
+    color: #1a1a1a !important;
+}
+
+.theme-light .theme-dropdown-link:hover {
+    color: var(--color-accent-purple) !important;
+}
+
+.theme-light .theme-dropdown-trigger {
+    color: #1a1a1a;
+}
+.theme-light .theme-dropdown-trigger:hover {
+    color: var(--color-accent-purple);
+}

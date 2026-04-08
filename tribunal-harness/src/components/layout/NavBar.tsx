@@ -31,7 +31,7 @@ export default function NavBar() {
                 </Link>
 
                 {/* Desktop nav */}
-                <div className="hidden md:flex items-center gap-8">
+                <div className="hidden min-[900px]:flex items-center gap-8">
                     {NAV_LINKS.map((link) => (
                         <Link
                             key={link.href}
@@ -46,17 +46,16 @@ export default function NavBar() {
                     {/* Trust dropdown */}
                     <div
                         style={{ position: "relative" }}
-                        onMouseEnter={() => setTrustOpen(true)}
-                        onMouseLeave={() => setTrustOpen(false)}
                     >
                         <button
-                            className="text-sm font-medium transition-colors text-gray-300 hover:text-purple-400 glass-text"
-                            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                            className="text-sm font-medium transition-colors glass-text theme-dropdown-trigger"
+                            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", color: pathname.startsWith("/trust") ? "var(--color-accent-purple)" : undefined }}
                             aria-haspopup="true"
                             aria-expanded={trustOpen}
+                            onClick={() => setTrustOpen(!trustOpen)}
                         >
                             Trust
-                            <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor" style={{ opacity: 0.8, transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)", transform: trustOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                            <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor" style={{ transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)", transform: trustOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
                                 <path d="M0 0l5 6 5-6z" />
                             </svg>
                         </button>
@@ -70,20 +69,20 @@ export default function NavBar() {
                             transformOrigin: "top center",
                             scale: trustOpen ? "1" : "0.95",
                             transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                        }} className="glass-surface glass-medium">
+                        }} className="glass-surface glass-medium theme-dropdown-bg">
                             <div style={{ padding: "0.5rem", display: "flex", flexDirection: "column", gap: "2px" }}>
                                 {TRUST_LINKS.map((link) => (
                                     <Link
                                         key={link.href}
                                         href={link.href}
-                                        className="glass-text"
+                                        className="glass-text theme-dropdown-link"
                                         style={{
                                             display: "block", padding: "0.6rem 0.75rem", fontSize: "0.85rem",
                                             color: pathname === link.href ? "var(--color-accent-purple)" : "rgba(255,255,255,0.8)",
                                             borderRadius: "8px", transition: "background 0.2s, color 0.2s"
                                         }}
-                                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(139,92,246,0.15)"; e.currentTarget.style.color = "#fff"; }}
-                                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = pathname === link.href ? "var(--color-accent-purple)" : "rgba(255,255,255,0.8)"; }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(139,92,246,0.15)"; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                                     >
                                         {link.label}
                                     </Link>
@@ -95,16 +94,16 @@ export default function NavBar() {
 
                 {/* Right side: Blog + CTA + hamburger */}
                 <div className="flex items-center gap-6">
-                    <Link href="/blog" className="hidden md:block text-gray-300 hover:text-purple-400 transition-colors text-sm font-medium glass-text">
+                    <Link href="/blog" className="hidden min-[900px]:block text-gray-300 hover:text-purple-400 transition-colors text-sm font-medium glass-text">
                         Blog
                     </Link>
-                    <Link href="/request-access" className="glass-button glass-thin hidden md:block" style={{ padding: "0.5rem 1.25rem", fontSize: "0.85rem", borderRadius: "8px", background: "rgba(139,92,246,0.2)" }}>
+                    <Link href="/request-access" className="glass-button glass-thin hidden min-[900px]:block" style={{ padding: "0.5rem 1.25rem", fontSize: "0.85rem", borderRadius: "8px", background: "rgba(139,92,246,0.2)" }}>
                         Request Access
                     </Link>
 
                     {/* Hamburger — mobile only */}
                     <button
-                        className="md:hidden glass-button glass-thin"
+                        className="max-[900px]:block min-[900px]:hidden glass-button glass-thin"
                         onClick={() => setMobileOpen(!mobileOpen)}
                         aria-label={mobileOpen ? "Close menu" : "Open menu"}
                         style={{ padding: "6px 8px", color: "white", background: "rgba(255,255,255,0.05)" }}
@@ -128,11 +127,11 @@ export default function NavBar() {
             {/* Mobile menu overlay - expanding glass panel */}
             <div style={{
                 position: "absolute", top: "calc(100% + 12px)", left: "0", right: "0",
-                display: mobileOpen ? "flex" : "none", flexDirection: "column",
+                flexDirection: "column",
                 padding: "2rem 1.5rem", gap: "0",
                 transformOrigin: "top center",
                 animation: "pourDown 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
-            }} className="glass-surface glass-thick md:hidden">
+            }} className={`glass-surface glass-thick min-[900px]:!hidden ${mobileOpen ? "flex" : "hidden"}`}>
                 <style>{`
                     @keyframes pourDown {
                         from { opacity: 0; transform: scaleY(0.9) translateY(-10px); }
@@ -157,21 +156,39 @@ export default function NavBar() {
 
                 {/* Trust section in mobile */}
                 <div style={{ padding: "1rem 0", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                    <p className="glass-text" style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(255,255,255,0.5)", marginBottom: "0.75rem" }}>Trust Indicators</p>
-                    {TRUST_LINKS.map((link) => (
-                        <Link
-                            key={link.href}
-                            href={link.href}
-                            onClick={() => setMobileOpen(false)}
-                            className="glass-text"
-                            style={{
-                                display: "block", padding: "0.5rem 0", fontSize: "1rem",
-                                color: pathname === link.href ? "var(--color-accent-purple)" : "rgba(255,255,255,0.8)"
-                            }}
-                        >
-                            {link.label}
-                        </Link>
-                    ))}
+                    <button
+                        className="glass-text w-full flex justify-between items-center"
+                        style={{ fontSize: "1.1rem", color: "#fff", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                        onClick={() => setTrustOpen(!trustOpen)}
+                    >
+                        Trust
+                        <svg width="12" height="8" viewBox="0 0 10 6" fill="currentColor" style={{ opacity: 0.8, transition: "transform 0.3s ease", transform: trustOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                            <path d="M0 0l5 6 5-6z" />
+                        </svg>
+                    </button>
+
+                    <div style={{
+                        display: trustOpen ? "flex" : "none",
+                        flexDirection: "column",
+                        marginTop: "1rem",
+                        paddingLeft: "1rem",
+                        borderLeft: "2px solid rgba(139,92,246,0.5)"
+                    }}>
+                        {TRUST_LINKS.map((link) => (
+                            <Link
+                                key={link.href}
+                                href={link.href}
+                                onClick={() => setMobileOpen(false)}
+                                className="glass-text"
+                                style={{
+                                    display: "block", padding: "0.5rem 0", fontSize: "1rem",
+                                    color: pathname === link.href ? "var(--color-accent-purple)" : "rgba(255,255,255,0.8)"
+                                }}
+                            >
+                                {link.label}
+                            </Link>
+                        ))}
+                    </div>
                 </div>
 
                 <Link

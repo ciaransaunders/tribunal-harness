@@ -97,7 +97,7 @@ export function AnalysisResultsPanel({ results, timelineStages }: AnalysisResult
                                     </div>
                                     <Badge variant={
                                         auth.trust_level === "VERIFIED" ? "verified" :
-                                            auth.trust_level === "CHECK" ? "warning" : "quarantined"
+                                            auth.trust_level === "CHECK" ? "check" : "quarantined"
                                     }>
                                         {auth.trust_level || "UNKNOWN"}
                                     </Badge>
