@@ -57,7 +57,6 @@ export default function TribunalHarness() {
     const [triageResults, setTriageResults] = useState(null);
     const [triageStage, setTriageStage] = useState("idle");
     const [dragActive, setDragActive] = useState(false);
-    const [triageAccepted, setTriageAccepted] = useState({});
 
     // Workflow state
     const [workflowTasks, setWorkflowTasks] = useState(() => TASK_TEMPLATES.map(t => ({ ...t, completed: false, active: false })));
@@ -199,7 +198,6 @@ export default function TribunalHarness() {
 
     const processTriageFile = async (file) => {
         setTriageStage("processing");
-        setTriageAccepted({});
         try {
             const text = await file.text();
             const truncated = text.slice(0, 8000);
