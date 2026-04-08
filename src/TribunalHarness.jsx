@@ -39,7 +39,6 @@ export default function TribunalHarness() {
         grievance: "",
     });
     const [results, setResults] = useState(null);
-    const [timeline, setTimeline] = useState([]);
     const [activeTab, setActiveTab] = useState("claims");
     const [error, setError] = useState(null);
     const [analysisStep, setAnalysisStep] = useState("");
