@@ -9,7 +9,7 @@ However, several test issues, logic patterns, and environmental configuration de
 
 ## Security Findings
 
-### 1. Hardcoded / Fallback Email Addresses
+### 1. Hardcoded / Fallback Email Addresses [FIXED]
 - **Severity**: Low
 - **File**: `tribunal-harness/src/app/api/request-access/route.ts`
 - **Location**: Line 33
@@ -22,7 +22,7 @@ However, several test issues, logic patterns, and environmental configuration de
 
 ## Architecture & Logic Findings
 
-### 1. Webhook Signatures Required but Disabled By Default
+### 1. Webhook Signatures Required but Disabled By Default [FIXED]
 - **Severity**: Info
 - **File**: `tribunal-harness/src/app/api/webhook/route.ts`
 - **Location**: Lines 24-30
@@ -40,7 +40,7 @@ However, several test issues, logic patterns, and environmental configuration de
 - **Impact**: The endpoint performs a check to see if a secret is configured. While it blocks unsigned requests when unconfigured (returning 503), the dependency on an external environment variable for the `crypto` library HMAC means the webhook logic is essentially disabled in development environments lacking this variable.
 - **Recommendation**: Ensure standard local development documentation references adding `WEBHOOK_SECRET` for testing webhook endpoints.
 
-### 2. Test Suite Flakiness / Pre-existing Failures
+### 2. Test Suite Flakiness / Pre-existing Failures [FIXED]
 - **Severity**: Medium
 - **File**: `tribunal-harness/src/services/api-routes.test.ts`
 - **Location**: Lines 67, 137
@@ -50,7 +50,7 @@ However, several test issues, logic patterns, and environmental configuration de
 
 ## Maintainability Findings
 
-### 1. Unresolved Imports in Vite Config (Global Root/Test Harness Issue)
+### 1. Unresolved Imports in Vite Config (Global Root/Test Harness Issue) [FIXED]
 - **Severity**: Low
 - **File**: Root level `vitest.config.ts` and `vite.config.js`
 - **Impact**: Local tests triggered errors mapping Next.js imports (`vitest/config`) using standard `npm run test` outside the specific Next.js environment configurations or resolving vite. This creates maintainer friction. Using `TMPDIR=/tmp npx vitest run` circumvents execution issues but still surfaces resolution warnings because Vite is not correctly mapped in the root when executing sub-project Vitest tests.

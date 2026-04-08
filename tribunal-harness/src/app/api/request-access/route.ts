@@ -32,8 +32,7 @@ async function sendEmailNotification(data: Record<string, unknown>): Promise<voi
 
     const notifyEmail = process.env.NOTIFY_EMAIL;
     if (!notifyEmail) {
-        console.warn("[Request Access] RESEND_API_KEY is set, but NOTIFY_EMAIL is missing. Email notification skipped.");
-        return;
+        throw new Error("RESEND_API_KEY is set, but NOTIFY_EMAIL is missing.");
     }
 
     try {
