@@ -35,12 +35,13 @@ export interface CitationValidationResult {
  * Validate a single citation string against the verified authorities database.
  *
  * Matching strategy:
- * 1. Extract the case short name from the citation string
- * 2. Try exact match against verified authority short names
- * 3. Try partial match against full names
- * 4. If no match, mark as QUARANTINED
+ * 1. Check if the citation is present in the provided context chunks (RAG)
+ * 2. Extract the case short name from the citation string
+ * 3. Try exact match against verified authority short names
+ * 4. Try partial match against full names
+ * 5. If no match, mark as QUARANTINED
  */
-export function validateCitation(citation: string): CitationValidationResult {
+export function validateCitation(citation: string, contextChunks?: string[]): CitationValidationResult {
     if (!citation || citation.trim().length === 0) {
         return {
             originalCitation: citation,
@@ -50,6 +51,23 @@ export function validateCitation(citation: string): CitationValidationResult {
     }
 
     const trimmed = citation.trim();
+
+    // Strategy 1: Check against retrieved context chunks
+    if (contextChunks && contextChunks.length > 0) {
+        // Extract case name for flexible matching in chunks
+        const caseNameMatch = trimmed.match(/^([^\[]+)/);
+        const searchPattern = caseNameMatch ? caseNameMatch[1].trim() : trimmed;
+
+        for (const chunk of contextChunks) {
+            if (chunk.includes(searchPattern)) {
+                return {
+                    originalCitation: trimmed,
+                    trustLevel: "VERIFIED",
+                    reason: "Verified: Citation found in retrieved vector chunks.",
+                };
+            }
+        }
+    }
 
     // Strategy 1: Extract likely case name and try exact short name match
     // Common patterns: "Polkey v AE Dayton Services Ltd [1987] UKHL 8"
@@ -123,7 +141,8 @@ export function validateCitation(citation: string): CitationValidationResult {
  * Returns validation results for each, plus aggregate statistics.
  */
 export function validateAllCitations(
-    authorities: Array<{ citation: string;[key: string]: unknown }>
+    authorities: Array<{ citation: string;[key: string]: unknown }>,
+    contextChunks?: string[]
 ): {
     results: CitationValidationResult[];
     summary: {
@@ -134,7 +153,7 @@ export function validateAllCitations(
         verifiedPercentage: number;
     };
 } {
-    const results = authorities.map((auth) => validateCitation(auth.citation));
+    const results = authorities.map((auth) => validateCitation(auth.citation, contextChunks));
 
     const verified = results.filter((r) => r.trustLevel === "VERIFIED").length;
     const check = results.filter((r) => r.trustLevel === "CHECK").length;

@@ -160,3 +160,40 @@ export async function callClaude(
         },
     };
 }
+
+export async function streamClaude(
+    params: CallClaudeParams
+) {
+    const client = getClient();
+    if (!client) return null;
+
+    const config = { ...getEndpointConfig(params.endpoint), ...params.configOverride };
+
+    // Build the messages request
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const requestParams: any = {
+        model: config.model,
+        max_tokens: config.max_tokens,
+        system: params.system,
+        messages: [{ role: "user", content: params.userMessage }],
+        stream: true,
+    };
+
+    // Apply temperature if specified
+    if (config.temperature !== undefined) {
+        requestParams.temperature = config.temperature;
+    }
+
+    // Apply extended thinking if enabled
+    if (config.thinking.type === "enabled" && config.thinking.budget_tokens) {
+        requestParams.thinking = {
+            type: "enabled",
+            budget_tokens: config.thinking.budget_tokens,
+        };
+        // Anthropic API requires temperature to be unset when thinking is enabled
+        delete requestParams.temperature;
+    }
+
+    const stream = await client.messages.create(requestParams);
+    return { stream, config };
+}
