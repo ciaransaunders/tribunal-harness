@@ -62,10 +62,11 @@ export function ClaimInputPanel({ onAnalyse, onDrop, isAnalysing }: ClaimInputPa
             <Card variant="glass" style={{ transform: "translateX(2rem)" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
                     <div>
-                        <label style={{ display: "block", fontSize: "0.7rem", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
+                        <label htmlFor="claim-type-select" style={{ display: "block", fontSize: "0.7rem", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
                             Claim Type
                         </label>
                         <select
+                            id="claim-type-select"
                             value={claimType}
                             onChange={(e) => setClaimType(e.target.value)}
                             style={{
@@ -83,10 +84,11 @@ export function ClaimInputPanel({ onAnalyse, onDrop, isAnalysing }: ClaimInputPa
                     </div>
 
                     <div>
-                        <label style={{ display: "block", fontSize: "0.7rem", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
+                        <label htmlFor="date-of-act-input" style={{ display: "block", fontSize: "0.7rem", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
                             Date of Act
                         </label>
                         <input
+                            id="date-of-act-input"
                             type="date"
                             value={dateOfLastAct}
                             onChange={(e) => setDateOfLastAct(e.target.value)}
@@ -102,10 +104,11 @@ export function ClaimInputPanel({ onAnalyse, onDrop, isAnalysing }: ClaimInputPa
                     </div>
 
                     <div>
-                        <label style={{ display: "block", fontSize: "0.7rem", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
+                        <label htmlFor="facts-textarea" style={{ display: "block", fontSize: "0.7rem", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
                             Facts
                         </label>
                         <textarea
+                            id="facts-textarea"
                             rows={3}
                             placeholder="Describe what happened..."
                             value={narrative}
