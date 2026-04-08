@@ -24,10 +24,11 @@ export interface TimelineStage {
 
 interface TimelineProps extends HTMLAttributes<HTMLDivElement> {
     stages: TimelineStage[];
+    onStepClick?: (step: TimelineStep) => void;
 }
 
 const Timeline = forwardRef<HTMLDivElement, TimelineProps>(
-    ({ className, stages, ...props }, ref) => {
+    ({ className, stages, onStepClick, ...props }, ref) => {
         const [expandedStage, setExpandedStage] = useState<string | null>(
             stages[0]?.level ?? null
         );
@@ -103,11 +104,19 @@ const Timeline = forwardRef<HTMLDivElement, TimelineProps>(
                                     className="mt-6 space-y-6 pl-5 border-l border-[rgba(255,255,255,0.1)] ml-5"
                                 >
                                     {stage.steps.map((step, idx) => (
-                                        <div key={idx} className="relative pl-6">
+                                        <div
+                                            key={idx}
+                                            className={cn(
+                                                "relative pl-6 rounded-md transition-colors",
+                                                onStepClick ? "cursor-pointer hover:bg-[rgba(255,255,255,0.05)] p-2 -ml-2" : ""
+                                            )}
+                                            onClick={() => onStepClick && onStepClick(step)}
+                                        >
                                             {/* Connector dot */}
                                             <div
                                                 className={cn(
                                                     "absolute -left-[25px] top-1 w-3 h-3 rounded-full border-2 bg-[var(--color-bg-primary)] z-10",
+                                                    onStepClick ? "top-3 -left-[17px]" : "",
                                                     step.status === "overdue"
                                                         ? "border-red-500 bg-red-500/20"
                                                         : step.status === "upcoming"

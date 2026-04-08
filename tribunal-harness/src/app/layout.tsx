@@ -51,7 +51,7 @@ export default function RootLayout({
             lang="en"
             className={`${playfair.variable} ${outfit.variable} ${firaCode.variable}`}
         >
-            <body>
+            <body className="theme-light">
                 <NavBar />
                 <main>{children}</main>
                 <Footer />
