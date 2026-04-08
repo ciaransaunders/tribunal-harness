@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import InputPanel from './components/TribunalHarness/InputPanel';
 import StateMachinePanel from './components/TribunalHarness/StateMachinePanel';
 import DebatePanel from './components/TribunalHarness/DebatePanel';
