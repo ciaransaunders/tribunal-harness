@@ -42,7 +42,6 @@ export default function TribunalHarness() {
     const [timeline, setTimeline] = useState([]);
     const [activeTab, setActiveTab] = useState("claims");
     const [error, setError] = useState(null);
-    const [analysisStep, setAnalysisStep] = useState("");
     const [expandedClaim, setExpandedClaim] = useState(null);
     const [expandedStage, setExpandedStage] = useState("Employment Tribunal");
 
@@ -237,7 +236,6 @@ export default function TribunalHarness() {
     const analyze = async () => {
         if (!apiKey) { setError("Please enter an API Key"); return; }
         setError(null);
-        setAnalysisStep("Analyzing facts...");
         setStage("analyzing");
 
         let userMessage = situation;
