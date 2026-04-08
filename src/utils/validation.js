@@ -1,10 +1,11 @@
-import { LEGAL_DATA_GRAPH } from '../constants/legalData';
+import { LEGAL_DATA_GRAPH } from '../constants/legalData.js';
+
+// Pre-compute the set of valid source IDs once at module level
+const allSourceIds = new Set();
+LEGAL_DATA_GRAPH.statutes.forEach(s => s.sections.forEach(sec => allSourceIds.add(sec.id)));
+LEGAL_DATA_GRAPH.judgments.forEach(j => allSourceIds.add(j.id));
 
 export function quarantineValidate(text) {
-    const allSourceIds = new Set();
-    LEGAL_DATA_GRAPH.statutes.forEach(s => s.sections.forEach(sec => allSourceIds.add(sec.id)));
-    LEGAL_DATA_GRAPH.judgments.forEach(j => allSourceIds.add(j.id));
-
     // Split on double newline (paragraph boundaries) — safe for legal text
     const paragraphs = text.split(/\n\n+/).map(p => p.trim()).filter(p => p.length > 0);
     const clean = [];
