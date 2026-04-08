@@ -1,0 +1,3 @@
+## 2025-04-08 - Added accessible forms linking and navigation menu attributes
+**Learning:** React labels without `htmlFor` fail screen-reader context linkage, even if positioned close visually. Adding `htmlFor` with corresponding input `id` immediately bridges this accessibility gap and even provides click-to-focus behavior. Expandable menus required explicit `aria-controls` and `id` linking for complete screen reader understanding of toggled state.
+**Action:** Ensure all inputs within the app use explicit ID linkage instead of implicit structure. Check all complex interactive dropdowns/toggles for `aria-controls` matching target `id`.
