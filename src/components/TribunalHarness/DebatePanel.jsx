@@ -8,6 +8,11 @@ import {
 } from '../../constants/prompts';
 import { ANTHROPIC_API_URL } from '../../constants/api';
 
+const SOURCE_LIST = LEGAL_DATA_GRAPH.statutes.map(s =>
+    `${s.name}: ${s.sections.map(sec => `${sec.ref} ${sec.title} [source:${sec.id}]`).join(", ")}`
+).join("\n") +
+    "\nJudgments: " + LEGAL_DATA_GRAPH.judgments.map(j => `${j.citation} [source:${j.id}]`).join(", ");
+
 function AgentCard({ entry, isExpanded, onToggle }) {
     const roleConfig = {
         blue: { label: 'DRAFTER', accent: '#7B6BF5', bg: 'rgba(123, 107, 245, 0.08)', icon: '🔵', border: 'rgba(123, 107, 245, 0.25)' },
@@ -97,11 +102,6 @@ export default function DebatePanel({ results, debateResults, debateRunning, deb
         setDebateResults(null);
         const log = [];
 
-        const sourceList = LEGAL_DATA_GRAPH.statutes.map(s =>
-            `${s.name}: ${s.sections.map(sec => `${sec.ref} ${sec.title} [source:${sec.id}]`).join(", ")}`
-        ).join("\n") +
-            "\nJudgments: " + LEGAL_DATA_GRAPH.judgments.map(j => `${j.citation} [source:${j.id}]`).join(", ");
-
         const callAPI = async (system, messages, maxTokens = 2000) => {
             const res = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
@@ -117,7 +117,7 @@ export default function DebatePanel({ results, debateResults, debateRunning, deb
             // Round 1: Drafter
             setDebateStep("Blue Team drafting initial argument...");
             const draftText = await callAPI(
-                DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + sourceList,
+                DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + SOURCE_LIST,
                 [{ role: "user", content: `Draft an argument for this claim:\n\n${claimText}` }]
             );
             log.push({ agent: "Drafter", role: "blue", text: draftText });
@@ -150,7 +150,7 @@ export default function DebatePanel({ results, debateResults, debateRunning, deb
             if (judgeVerdict.verdict === "needs_revision" && judgeVerdict.revision_guidance) {
                 setDebateStep("Blue Team revising based on critique...");
                 finalArg = await callAPI(
-                    DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + sourceList,
+                    DRAFTER_PROMPT + "\n\nLegal Data Graph:\n" + SOURCE_LIST,
                     [
                         { role: "user", content: `Draft an argument for this claim:\n\n${claimText}` },
                         { role: "assistant", content: draftText },
