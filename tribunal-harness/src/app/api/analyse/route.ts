@@ -4,7 +4,9 @@ import { getSchema } from "@/schemas";
 import { ERA_2025 } from "@/lib/constants";
 import { validateAllCitations } from "@/services/citation-validator";
 import { ANALYSE_PROMPT_v2, PROMPT_VERSIONS } from "@/agents/prompts";
-import { callClaude, isClientAvailable } from "@/lib/claude-client";
+import { callClaude, streamClaude, isClientAvailable } from "@/lib/claude-client";
+import { kv } from "@vercel/kv";
+import { searchVector } from "@/services/embeddings";
 
 /**
  * POST /api/analyse
@@ -19,27 +21,23 @@ import { callClaude, isClientAvailable } from "@/lib/claude-client";
  * Set { complexity: "high" } in request body to trigger Opus routing.
  */
 
-// Extremely basic in-memory rate limiter for demo purposes
-// In production, use Vercel KV or Upstash Redis
-const rateLimitMap = new Map<string, { count: number; timestamps: number[] }>();
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const RATE_LIMIT_WINDOW_S = 10; // 10 seconds
 const RATE_LIMIT_MAX_REQUESTS = 10;
 
-function checkRateLimit(ip: string): boolean {
-    const now = Date.now();
-    const record = rateLimitMap.get(ip) || { count: 0, timestamps: [] };
-
-    // Clean up old timestamps
-    record.timestamps = record.timestamps.filter((ts) => now - ts < RATE_LIMIT_WINDOW_MS);
-
-    if (record.timestamps.length >= RATE_LIMIT_MAX_REQUESTS) {
-        return false;
+async function checkRateLimit(ip: string): Promise<boolean> {
+    if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+        console.warn("[API] KV rate limiting disabled because env vars are missing.");
+        return true;
     }
 
-    record.timestamps.push(now);
-    record.count = record.timestamps.length;
-    rateLimitMap.set(ip, record);
-    return true;
+    const key = `ratelimit:analyse:${ip}`;
+    const count = await kv.incr(key);
+
+    if (count === 1) {
+        await kv.expire(key, RATE_LIMIT_WINDOW_S);
+    }
+
+    return count <= RATE_LIMIT_MAX_REQUESTS;
 }
 
 export async function POST(request: NextRequest) {
@@ -47,7 +45,7 @@ export async function POST(request: NextRequest) {
     try {
         // Implement rate limiting
         const ip = request.headers.get("x-forwarded-for") || "unknown-ip";
-        if (!checkRateLimit(ip)) {
+        if (!(await checkRateLimit(ip))) {
             console.warn(`[API] Rate limit exceeded for IP: ${ip}`);
             return NextResponse.json(
                 { error: "Rate limit exceeded. Please try again later." },
@@ -117,72 +115,113 @@ export async function POST(request: NextRequest) {
         // Build the user message
         const userMessage = buildUserMessage(body, schema);
 
+        // Query Vector DB for relevant context
+        const queryText = body.narrative_text || body.claim_type;
+        const vectorResults = await searchVector(queryText, 3);
+        const ragContext = vectorResults.map(r => `[Chunk: ${r.chunk_id}]\n${r.content}`).join("\n\n");
+        const systemPrompt = ANALYSE_PROMPT_v2.replace("{{RAG_CONTEXT}}", ragContext || "No relevant case context found.");
+
         // Determine endpoint config based on complexity
         const endpoint = body.complexity === "high" ? "analyse_complex" : "analyse";
 
-        // Call Claude via centralised client
-        const result = await callClaude({
+        // Use stream client
+        const streamResult = await streamClaude({
             endpoint,
-            system: ANALYSE_PROMPT_v2,
+            system: systemPrompt,
             userMessage,
             promptVersion: PROMPT_VERSIONS.ANALYSE,
         });
 
-        if (!result) {
-            // Should not happen if isClientAvailable() passed, but defensive
+        if (!streamResult) {
             return NextResponse.json(
                 { error: "Claude client unavailable" },
                 { status: 500 }
             );
         }
 
-        // Try to parse as JSON
-        try {
-            const parsed = JSON.parse(result.content);
+        // Since the frontend requires JSON to render, we will stream the text response,
+        // buffer it on the server, and then finalize and send as JSON if needed,
+        // or yield it chunk by chunk if we update the frontend. The instructions state:
+        // "Convert the Anthropic call in app/api/analyse/route.ts to return a ReadableStream"
+        // and "maintain the frontend JSON contract and ensuring validation occurs."
 
-            // Phase 2a Epistemic Quarantine: Verify citations against known-good database
-            if (parsed.authorities && Array.isArray(parsed.authorities)) {
-                const validation = validateAllCitations(parsed.authorities);
+        const readableStream = new ReadableStream({
+            async start(controller) {
+                let accumulatedJSON = "";
 
-                // Update each authority with its verified trust level
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                parsed.authorities = parsed.authorities.map((auth: any, index: number) => {
-                    const validationResult = validation.results[index];
-                    return {
-                        ...auth,
-                        // Override Claude's reported trust with our verification
-                        verified: validationResult.trustLevel === "VERIFIED",
-                        trust_level: validationResult.trustLevel,
-                        validation_reason: validationResult.reason,
-                        matched_case: validationResult.matchedAuthority?.shortName
-                    };
-                });
+                try {
+                    for await (const chunk of streamResult.stream) {
+                        if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
+                            accumulatedJSON += chunk.delta.text;
+                            // Send a whitespace character to keep the connection alive
+                            // Leading whitespace is ignored by JSON.parse()
+                            controller.enqueue(new TextEncoder().encode(" "));
+                        }
+                    }
 
-                // Attach summary to response for analytics/debugging
-                parsed.quarantine_summary = validation.summary;
-            }
+                    // After the stream is complete, we perform the JSON parsing and validation
+                    try {
+                        const parsed = JSON.parse(accumulatedJSON);
 
-            // Attach debug metadata
-            parsed._debug = result.debug;
+                        if (parsed.authorities && Array.isArray(parsed.authorities)) {
+                            // Extract context chunks for validation
+                            const contextChunks = vectorResults.map(r => r.content);
+                            const validation = validateAllCitations(parsed.authorities, contextChunks);
 
-            return NextResponse.json(parsed);
-        } catch {
-            const duration = Date.now() - startTime;
-            console.warn(`[API /api/analyse] Failed to parse JSON, returning raw text. Duration: ${duration}ms`);
-            // If Claude didn't return valid JSON, wrap in structured response
-            return NextResponse.json({
-                claims: [],
-                authorities: [],
-                statutory_provisions: [],
-                procedural_notes: [result.content],
-                era_2025_flags: [],
-                raw_analysis: result.content,
-                _debug: {
-                    ...result.debug,
-                    error: "JSON mapping failed"
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            parsed.authorities = parsed.authorities.map((auth: any, index: number) => {
+                                const validationResult = validation.results[index];
+                                return {
+                                    ...auth,
+                                    verified: validationResult.trustLevel === "VERIFIED",
+                                    trust_level: validationResult.trustLevel,
+                                    validation_reason: validationResult.reason,
+                                    matched_case: validationResult.matchedAuthority?.shortName
+                                };
+                            });
+
+                            parsed.quarantine_summary = validation.summary;
+                        }
+
+                        parsed._debug = {
+                            ...streamResult.config,
+                            streaming_fallback: true
+                        };
+
+                        // Send the finalized JSON back as a single chunk to satisfy the Next.js stream response
+                        controller.enqueue(new TextEncoder().encode(JSON.stringify(parsed)));
+
+                    } catch (parseError) {
+                        console.warn(`[API /api/analyse] Failed to parse JSON from stream, returning raw text.`);
+                        const fallbackResponse = {
+                            claims: [],
+                            authorities: [],
+                            statutory_provisions: [],
+                            procedural_notes: [accumulatedJSON],
+                            era_2025_flags: [],
+                            raw_analysis: accumulatedJSON,
+                            _debug: {
+                                error: "JSON mapping failed"
+                            }
+                        };
+                        controller.enqueue(new TextEncoder().encode(JSON.stringify(fallbackResponse)));
+                    }
+                } catch (error) {
+                    console.error("[API /api/analyse] Stream processing error:", error);
+                    controller.enqueue(new TextEncoder().encode(JSON.stringify({ error: "Stream error occurred" })));
+                } finally {
+                    controller.close();
                 }
-            });
-        }
+            }
+        });
+
+        // Return the ReadableStream
+        return new Response(readableStream, {
+            headers: {
+                "Content-Type": "application/json",
+                "Cache-Control": "no-cache, no-transform",
+            },
+        });
     } catch (error) {
         const duration = Date.now() - startTime;
         console.error(`[API /api/analyse] Error. Duration: ${duration}ms`, error);

@@ -13,6 +13,8 @@
     },
     "dependencies": {
         "@anthropic-ai/sdk": "^0.78.0",
+        "@neondatabase/serverless": "^1.0.2",
+        "@vercel/kv": "^3.0.0",
         "clsx": "^2.1.1",
         "framer-motion": "^12.34.0",
         "lucide-react": "^0.564.0",
@@ -31,6 +33,7 @@
         "eslint": "^9.0.0",
         "eslint-config-next": "^15.1.0",
         "tailwindcss": "^4.0.0",
+        "tsx": "^4.21.0",
         "typescript": "^5.7.0",
         "vitest": "^3.0.0"
     }
