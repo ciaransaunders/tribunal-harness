@@ -43,7 +43,6 @@ export default function TribunalHarness() {
     const [activeTab, setActiveTab] = useState("claims");
     const [error, setError] = useState(null);
     const [analysisStep, setAnalysisStep] = useState("");
-    const [expandedClaim, setExpandedClaim] = useState(null);
     const [expandedStage, setExpandedStage] = useState("Employment Tribunal");
 
     const [apiKey, setApiKey] = useState(() => {
@@ -56,16 +55,13 @@ export default function TribunalHarness() {
     // Triage state
     const [triageResults, setTriageResults] = useState(null);
     const [triageStage, setTriageStage] = useState("idle");
-    const [dragActive, setDragActive] = useState(false);
     const [triageAccepted, setTriageAccepted] = useState({});
 
     // Workflow state
     const [workflowTasks, setWorkflowTasks] = useState(() => TASK_TEMPLATES.map(t => ({ ...t, completed: false, active: false })));
-    const [timeSpentMins, setTimeSpentMins] = useState(0);
 
     // === Framework 1: Inverse Chatbot state ===
     const [inputMode, setInputMode] = useState("freeform"); // freeform | schema
-    const [selectedClaimType, setSelectedClaimType] = useState("unfair_dismissal");
     const [schemaValues, setSchemaValues] = useState({});
 
     // === Framework 3: Durable State Machine state ===
@@ -75,7 +71,6 @@ export default function TribunalHarness() {
     const [debateResults, setDebateResults] = useState(null);
     const [debateRunning, setDebateRunning] = useState(false);
     const [debateStep, setDebateStep] = useState("");
-    const [showDebateLog, setShowDebateLog] = useState(false);
 
     // Persist FSM on change
     useEffect(() => { saveFSMState(fsmState); }, [fsmState]);
