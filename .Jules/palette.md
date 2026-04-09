@@ -1,0 +1,3 @@
+## 2024-04-09 - Add explicit label associations in ClaimInputPanel
+**Learning:** Found an accessibility issue pattern where form elements (`input`, `select`, `textarea`) were missing `id` attributes and their corresponding `label` elements lacked `htmlFor` attributes in custom React components. Even when labels wrap inputs, having explicit IDs improves compatibility with a wider range of screen readers and click-to-focus behavior.
+**Action:** Always verify that every form control has a unique `id` and its associated `label` has a matching `htmlFor` attribute during development and code review of form components.
