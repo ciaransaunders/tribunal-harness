@@ -1,0 +1,4 @@
+
+## 2024-04-12 - Explicit Form & Menu Accessibility Linkage Patterns
+**Learning:** Found a specific pattern in the application's components (ClaimInputPanel and NavBar) where implicit wrappers or visual proximity were used instead of explicit accessibility bindings. Custom UI controls (like the Next.js/Tailwind dropdowns and mobile menus) lacked `aria-controls` bindings to their target containers, and standard forms missed explicit `htmlFor` properties to associate labels with interactive inputs for screen reader support and hit-box improvements.
+**Action:** Always verify that React form `<label>`s have an explicit `htmlFor` matching the `id` of the target `<input>`/`<select>`/`<textarea>`. Ensure expandable menus and toggle buttons (like Trust dropdown or mobile hamburgers) include `aria-controls` that match the `id` of their respective content panels, and use `aria-expanded` reflecting their open state.
