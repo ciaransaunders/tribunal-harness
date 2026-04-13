@@ -28,7 +28,6 @@ import { ANTHROPIC_API_URL } from "./constants/api";
 
 // Components
 import TrustBadge from "./components/shared/TrustBadge";
-import StrengthIndicator from "./components/shared/StrengthIndicator";
 
 export default function TribunalHarness() {
     const [stage, setStage] = useState("input"); // input, analyzing, results
