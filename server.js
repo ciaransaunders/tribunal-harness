@@ -39,6 +39,4 @@ app.post('/api/anthropic', async (req, res) => {
     }
 });
 
-app.listen(port, () => {
-    console.log(`Backend proxy server listening at http://localhost:${port}`);
-});
+app.listen(port);
