@@ -17,6 +17,12 @@ interface CaseLawEntry {
     url?: string;
 }
 
+interface SearchableCaseLawEntry extends CaseLawEntry {
+    _case_name_lower: string;
+    _summary_lower: string;
+    _citation_lower: string;
+}
+
 const SEED_CASES: CaseLawEntry[] = [
     {
         id: "polkey-v-dayton",
@@ -273,13 +279,20 @@ const SEED_CASES: CaseLawEntry[] = [
     },
 ];
 
-function scoreCase(entry: CaseLawEntry, query: string, claimType?: string): number {
+const SEARCHABLE_SEED_CASES: SearchableCaseLawEntry[] = SEED_CASES.map(entry => ({
+    ...entry,
+    _case_name_lower: entry.case_name.toLowerCase(),
+    _summary_lower: entry.summary.toLowerCase(),
+    _citation_lower: entry.citation.toLowerCase(),
+}));
+
+function scoreCase(entry: SearchableCaseLawEntry, query: string, claimType?: string): number {
     const q = query.toLowerCase();
     let score = 0;
 
-    if (entry.case_name.toLowerCase().includes(q)) score += 10;
-    if (entry.summary.toLowerCase().includes(q)) score += 5;
-    if (entry.citation.toLowerCase().includes(q)) score += 8;
+    if (entry._case_name_lower.includes(q)) score += 10;
+    if (entry._summary_lower.includes(q)) score += 5;
+    if (entry._citation_lower.includes(q)) score += 8;
     if (claimType && entry.claim_types.includes(claimType)) score += 6;
     if (entry.tier === "binding") score += 2;
     if (entry.tier === "statutory") score += 1;
@@ -302,7 +315,7 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    let results = SEED_CASES;
+    let results: SearchableCaseLawEntry[] | (SearchableCaseLawEntry & { _score: number })[] = SEARCHABLE_SEED_CASES;
 
     if (tierFilter) {
         results = results.filter((c) => c.tier === tierFilter);
@@ -316,7 +329,7 @@ export async function GET(request: NextRequest) {
         results = results
             .map((c) => ({ ...c, _score: scoreCase(c, query, claimType) }))
             .filter((c) => c._score > 0)
-            .sort((a, b) => b._score - a._score)
+            .sort((a, b) => (b as any)._score - (a as any)._score)
             .slice(0, limit);
     } else {
         results = results.slice(0, limit);
@@ -329,6 +342,6 @@ export async function GET(request: NextRequest) {
         data_source: "seed_v1",
         note: "Phase 2 seed data. Vector DB integration planned for Phase 3.",
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        results: results.map(({ _score, ...rest }: CaseLawEntry & { _score?: number }) => rest),
+        results: results.map(({ _score, _case_name_lower, _summary_lower, _citation_lower, ...rest }: any) => rest as CaseLawEntry),
     });
 }
