@@ -1,10 +1,10 @@
 "use client";
 
-import { type HTMLAttributes, forwardRef } from "react";
+import React, { forwardRef } from "react";
 import { cn } from "@/lib/ui-utils";
 import { ShieldCheck, CircleAlert, XCircle } from "lucide-react";
 
-export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
+export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
     variant?: "verified" | "warning" | "unverified" | "quarantined" | "neutral";
 }
 
