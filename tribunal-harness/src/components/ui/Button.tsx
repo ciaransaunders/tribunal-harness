@@ -1,10 +1,10 @@
 "use client";
 
-import { type ButtonHTMLAttributes, forwardRef } from "react";
+import React, { forwardRef } from "react";
 import { cn } from "@/lib/ui-utils";
 import { Loader2 } from "lucide-react";
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: "primary" | "secondary" | "outline" | "ghost";
     size?: "sm" | "md" | "lg";
     isLoading?: boolean;
