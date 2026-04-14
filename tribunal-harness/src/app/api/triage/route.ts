@@ -113,8 +113,9 @@ export async function POST(request: NextRequest) {
             });
         }
     } catch (error) {
+        console.error("[Triage] Error:", error);
         return NextResponse.json(
-            { error: "Internal server error", details: String(error) },
+            { error: "Failed to run triage analysis" },
             { status: 500 }
         );
     }
