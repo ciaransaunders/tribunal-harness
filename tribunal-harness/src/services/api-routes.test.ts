@@ -108,6 +108,20 @@ describe("POST /api/deadlines", () => {
         const hasStaleWarning = json.warnings.some((w: string) => w.includes("2028"));
         expect(hasStaleWarning).toBe(true);
     });
+    it("returns 500 on internal server error", async () => {
+        // Create a mock request that throws when json() is called
+        const req = new NextRequest("http://localhost:3000/api/deadlines", {
+            method: "POST",
+        });
+        req.json = async () => {
+            throw new Error("Simulated internal error");
+        };
+        const res = await POST(req);
+        expect(res.status).toBe(500);
+        const json = await res.json();
+        expect(json.error).toBe("Internal server error");
+    });
+
 });
 
 // ---------------------------------------------------------------------------
@@ -197,6 +211,37 @@ describe("POST /api/analyse — degraded mode", () => {
         expect(json.statutory_provisions).toBeDefined();
         expect(json.procedural_notes).toBeDefined();
     });
+    it("returns 400 if mode is narrative and narrative_text is less than 50 characters", async () => {
+        const req = makeRequest({
+            claim_type: "unfair_dismissal",
+            mode: "narrative",
+            narrative_text: "Too short narrative text."
+        });
+        const res = await POST(req);
+        expect(res.status).toBe(400);
+        const json = await res.json();
+        expect(json.error).toContain("Please provide a more detailed narrative (minimum 50 characters)");
+    });
+
+    it("returns 429 if rate limit of 10 requests is exceeded", async () => {
+        // Send 10 successful requests
+        for (let i = 0; i < 10; i++) {
+            const req = makeRequest({ claim_type: "unfair_dismissal", narrative_text: "I was dismissed" });
+            // Add a mock IP header so they all count towards the same rate limit
+            req.headers.set("x-forwarded-for", "127.0.0.1");
+            await POST(req);
+        }
+
+        // The 11th request should hit the rate limit
+        const req11 = makeRequest({ claim_type: "unfair_dismissal", narrative_text: "I was dismissed" });
+        req11.headers.set("x-forwarded-for", "127.0.0.1");
+        const res11 = await POST(req11);
+
+        expect(res11.status).toBe(429);
+        const json = await res11.json();
+        expect(json.error).toContain("Rate limit exceeded");
+    });
+
 });
 
 // ---------------------------------------------------------------------------
@@ -253,4 +298,15 @@ describe("GET /api/case-law/search", () => {
             expect(r.tier).toBe("binding");
         });
     });
+    it("limits results based on limit parameter", async () => {
+        // Query empty with limit 2, wait query is required to not return 400?
+        // Let's use claim_type which avoids 400
+        const req = makeGetRequest("http://localhost:3000/api/case-law/search?claim_type=unfair_dismissal&limit=2");
+        const res = await GET(req);
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.results.length).toBeLessThanOrEqual(2);
+        // Make sure total might be larger but results is limited
+    });
+
 });
