@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function StrengthIndicator({ strength }) {
     const colors = {
         strong: { bg: "rgba(45, 212, 191, 0.12)", color: "#2dd4bf", label: "STRONG" },
