@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function TrustBadge({ verified, confidence }) {
     if (verified && confidence === "high") {
         return (
