@@ -48,7 +48,6 @@ export async function POST(request: NextRequest) {
         // Implement rate limiting
         const ip = request.headers.get("x-forwarded-for") || "unknown-ip";
         if (!checkRateLimit(ip)) {
-            console.warn(`[API] Rate limit exceeded for IP: ${ip}`);
             return NextResponse.json(
                 { error: "Rate limit exceeded. Please try again later." },
                 { status: 429 }
