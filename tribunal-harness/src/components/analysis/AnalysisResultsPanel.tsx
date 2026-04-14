@@ -3,13 +3,13 @@
 import type { AnalyseResponse } from "@/schemas/types";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Timeline, type TimelineStage } from "@/components/analysis/Timeline";
+import { Timeline } from "@/components/analysis/Timeline";
 import { Scale, FileText, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface AnalysisResultsPanelProps {
     results: Partial<AnalyseResponse> & { error?: string };
-    timelineStages: TimelineStage[];
+    timelineStages: React.ComponentProps<typeof Timeline>['stages'];
 }
 
 export function AnalysisResultsPanel({ results, timelineStages }: AnalysisResultsPanelProps) {
