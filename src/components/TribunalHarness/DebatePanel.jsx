@@ -174,7 +174,6 @@ export default function DebatePanel({ results, debateResults, debateRunning, deb
                 quarantine,
             });
         } catch (err) {
-            console.error(err);
             setError("Debate failed: " + err.message);
         } finally {
             setDebateRunning(false);
