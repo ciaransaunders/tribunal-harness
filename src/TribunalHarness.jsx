@@ -189,7 +189,6 @@ export default function TribunalHarness() {
                 quarantine,
             });
         } catch (err) {
-            console.error(err);
             setError("Debate failed: " + err.message);
         } finally {
             setDebateRunning(false);
@@ -228,7 +227,6 @@ export default function TribunalHarness() {
             setActiveTab("triage");
             if (stage === "input") setStage("results");
         } catch (err) {
-            console.error(err);
             setError("Triage failed: " + err.message);
             setTriageStage("idle");
         }
