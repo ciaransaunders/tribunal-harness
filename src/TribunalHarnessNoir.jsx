@@ -53,8 +53,8 @@ export default function TribunalHarnessNoir() {
 
     useEffect(() => {
         try {
-            const stored = localStorage.getItem('tribunal_harness_api_key');
-            if (stored) setApiKey(stored);
+            localStorage.setItem("__test", "1");
+            localStorage.removeItem("__test");
         } catch { setStorageAvailable(false); }
     }, []);
 
