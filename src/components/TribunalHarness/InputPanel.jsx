@@ -164,7 +164,16 @@ export default function InputPanel({
                         value={apiKey}
                         onChange={(e) => {
                             setApiKey(e.target.value);
-                            try { localStorage.setItem("tribunal_harness_api_key", e.target.value); } catch { }
+
+                            // Simple debounce-like logic (though usually typing an API key involves pasting)
+                            if (e.target.value !== "***") {
+                                fetch("/api/auth", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ apiKey: e.target.value }),
+                                    credentials: "include"
+                                }).catch(() => {});
+                            }
                         }}
                         placeholder="sk-ant-..."
                         className="noir-input"
