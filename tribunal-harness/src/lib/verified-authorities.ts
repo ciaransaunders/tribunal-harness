@@ -344,7 +344,7 @@ for (const auth of VERIFIED_AUTHORITIES) {
 export function findAuthorityByShortName(
     name: string
 ): VerifiedAuthority | undefined {
-    return AUTHORITY_INDEX.get(name.toLowerCase());
+    return AUTHORITY_INDEX.get(name.trim().toLowerCase());
 }
 
 /**
@@ -354,7 +354,7 @@ export function findAuthorityByShortName(
 export function findAuthorityByPartialMatch(
     text: string
 ): VerifiedAuthority | undefined {
-    const lower = text.toLowerCase();
+    const lower = text.trim().toLowerCase();
     for (const auth of VERIFIED_AUTHORITIES) {
         if (lower.includes(auth.shortName.toLowerCase())) {
             return auth;
