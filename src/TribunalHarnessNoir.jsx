@@ -11,6 +11,7 @@ import { LEGAL_TEST_SCHEMAS, LEGAL_DATA_GRAPH } from './constants/legalData';
 import { SYSTEM_PROMPT, TRIAGE_SYSTEM_PROMPT } from './constants/prompts';
 import { formatDate, threeMonthsLessOneDay } from './utils/dateUtils';
 import { ANTHROPIC_API_URL } from './constants/api';
+import { callAnthropicAPI, parseJSONResponse } from './utils/apiUtils';
 
 const TABS = [
     { id: 'analysis', label: 'Analysis', icon: '⚖️' },
@@ -110,26 +111,16 @@ export default function TribunalHarnessNoir() {
                 "\nJudgments: " + LEGAL_DATA_GRAPH.judgments.map(j => `${j.citation} [source:${j.id}]`).join(", ");
 
             const messages = [{ role: "user", content: claimText }];
-            const res = await fetch(ANTHROPIC_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': apiKey,
-                    'anthropic-version': '2023-06-01',
-                },
-                body: JSON.stringify({
-                    model: 'claude-sonnet-4-20250514',
-                    max_tokens: 4096,
-                    system: SYSTEM_PROMPT + "\n\nLegal Data Graph:\n" + sourceList,
-                    messages,
-                }),
+
+            const raw = await callAnthropicAPI({
+                apiKey,
+                system: SYSTEM_PROMPT + "\n\nLegal Data Graph:\n" + sourceList,
+                messages,
+                max_tokens: 4096,
             });
-            if (!res.ok) throw new Error(`API returned ${res.status}: ${res.statusText}`);
-            const data = await res.json();
-            const raw = data.content.map(b => b.text || '').join('');
-            const cleaned = raw.replace(/```json|```/g, '').trim();
+
             let parsed;
-            try { parsed = JSON.parse(cleaned); } catch {
+            try { parsed = parseJSONResponse(raw); } catch {
                 parsed = { raw_analysis: raw, claims: [], time_limit_assessment: {}, procedure_roadmap: [] };
             }
             const quarantine = quarantineValidate(raw);
@@ -144,25 +135,14 @@ export default function TribunalHarnessNoir() {
     const processTriageFile = async (file) => {
         try {
             const text = await file.text();
-            const res = await fetch(ANTHROPIC_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': apiKey,
-                    'anthropic-version': '2023-06-01',
-                },
-                body: JSON.stringify({
-                    model: 'claude-sonnet-4-20250514',
-                    max_tokens: 2000,
-                    system: TRIAGE_SYSTEM_PROMPT,
-                    messages: [{ role: 'user', content: `Document to triage:\n\n${text}` }],
-                }),
+            const raw = await callAnthropicAPI({
+                apiKey,
+                system: TRIAGE_SYSTEM_PROMPT,
+                messages: [{ role: 'user', content: `Document to triage:\n\n${text}` }],
+                max_tokens: 2000,
             });
-            if (!res.ok) throw new Error('Triage API failed');
-            const data = await res.json();
-            const raw = data.content.map(b => b.text || '').join('');
-            try { setTriageResults(JSON.parse(raw.replace(/```json|```/g, '').trim())); } catch { setTriageResults({ raw }); }
-        } catch (err) { setError(err.message); }
+            try { setTriageResults(parseJSONResponse(raw)); } catch { setTriageResults({ raw }); }
+        } catch (err) { setError(err.message === 'Failed to parse JSON' ? 'Failed to parse JSON' : err.message); }
     };
 
     const handleDrag = (e) => { e.preventDefault(); e.stopPropagation(); setDragActive(e.type === 'dragover'); };

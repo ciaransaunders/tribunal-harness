@@ -6,7 +6,7 @@ import {
     CRITIC_PROMPT,
     JUDGE_PROMPT
 } from '../../constants/prompts';
-import { ANTHROPIC_API_URL } from '../../constants/api';
+import { callAnthropicAPI, parseJSONResponse } from '../../utils/apiUtils';
 
 function AgentCard({ entry, isExpanded, onToggle }) {
     const roleConfig = {
@@ -103,14 +103,12 @@ export default function DebatePanel({ results, debateResults, debateRunning, deb
             "\nJudgments: " + LEGAL_DATA_GRAPH.judgments.map(j => `${j.citation} [source:${j.id}]`).join(", ");
 
         const callAPI = async (system, messages, maxTokens = 2000) => {
-            const res = await fetch(ANTHROPIC_API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-                body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: maxTokens, system, messages }),
+            return await callAnthropicAPI({
+                apiKey,
+                system,
+                messages,
+                max_tokens: maxTokens,
             });
-            if (!res.ok) throw new Error(`API error: ${res.status}`);
-            const data = await res.json();
-            return data.content.map(b => b.text || "").join("");
         };
 
         try {
@@ -137,9 +135,8 @@ export default function DebatePanel({ results, debateResults, debateRunning, deb
                 [{ role: "user", content: `Claimant argument:\n${draftText}\n\nRespondent attack:\n${critText}` }],
                 1000
             );
-            const judgeClean = judgeRaw.replace(/```json|```/g, "").trim();
             let judgeVerdict;
-            try { judgeVerdict = JSON.parse(judgeClean); } catch {
+            try { judgeVerdict = parseJSONResponse(judgeRaw); } catch {
                 judgeVerdict = { score: 50, verdict: "pass", strengths: [], weaknesses: ["Could not parse judge response"], revision_guidance: "" };
             }
             log.push({ agent: "Judge", role: "judge", text: JSON.stringify(judgeVerdict, null, 2), parsed: judgeVerdict });
