@@ -1,5 +1,15 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+vi.mock("@/lib/claude-client", async (importOriginal) => {
+    const actual = await importOriginal();
+    return {
+        ...actual,
+        callClaude: vi.fn(),
+        isClientAvailable: vi.fn(),
+    };
+});
 import { NextRequest } from "next/server";
+import * as claudeClient from "@/lib/claude-client";
 
 // ---------------------------------------------------------------------------
 // API Route Integration Tests
@@ -252,5 +262,82 @@ describe("GET /api/case-law/search", () => {
         json.results.forEach((r: { tier: string }) => {
             expect(r.tier).toBe("binding");
         });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// /api/triage
+// ---------------------------------------------------------------------------
+
+
+describe("POST /api/triage", () => {
+    let POST: (req: NextRequest) => Promise<Response>;
+
+    function makeFormDataRequest(fileName: string, content: string): NextRequest {
+        const formData = new FormData();
+        const file = new File([content], fileName, { type: "text/plain" });
+        formData.append("document", file);
+        return new NextRequest("http://localhost:3000/api/triage", {
+            method: "POST",
+            body: formData,
+        });
+    }
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+        const mod = await import("../app/api/triage/route");
+        POST = mod.POST;
+    });
+
+    it("handles missing document field", async () => {
+        const formData = new FormData();
+        const req = new NextRequest("http://localhost:3000/api/triage", {
+            method: "POST",
+            body: formData,
+        });
+        const res = await POST(req);
+        expect(res.status).toBe(400);
+        const json = await res.json();
+        expect(json.error).toBeDefined();
+    });
+
+    it("handles unsupported file type", async () => {
+        const req = makeFormDataRequest("test.png", "binary data");
+        const res = await POST(req);
+        expect(res.status).toBe(400);
+        const json = await res.json();
+        expect(json.error).toBeDefined();
+    });
+
+    it("handles Claude API errors gracefully", async () => {
+        vi.mocked(claudeClient.isClientAvailable).mockReturnValue(true);
+        vi.mocked(claudeClient.callClaude).mockRejectedValue(new Error("Anthropic API Error"));
+
+        const req = makeFormDataRequest("test.txt", "Some text");
+        const res = await POST(req);
+
+        expect(res.status).toBe(500);
+        const json = await res.json();
+        // Updated test assertions to match the actual route logic
+        expect(json.error).toBe("Failed to run triage analysis");
+    });
+
+    it("handles Claude returning malformed JSON gracefully", async () => {
+        vi.mocked(claudeClient.isClientAvailable).mockReturnValue(true);
+        vi.mocked(claudeClient.callClaude).mockResolvedValue({
+            content: "This is not JSON",
+            usage: { input_tokens: 10, output_tokens: 10 },
+            debug: { model: "test", endpoint_config: "test", prompt_version: "1", duration_ms: 100, effort: "low", thinking_enabled: false, cost_estimate: { cost_usd: 0, cost_gbp: 0 } }
+        });
+
+        const req = makeFormDataRequest("test.txt", "Some text");
+        const res = await POST(req);
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.updated_fields).toEqual({});
+        expect(json.query_array).toEqual([]);
+        expect(json.document_summary).toBe("This is not JSON");
+        expect(json._debug.error).toBe("JSON mapping failed");
     });
 });
