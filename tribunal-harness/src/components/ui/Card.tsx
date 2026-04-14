@@ -1,9 +1,9 @@
 "use client";
 
-import { type HTMLAttributes, forwardRef } from "react";
+import React, { forwardRef } from "react";
 import { cn } from "@/lib/ui-utils";
 
-export interface CardProps extends HTMLAttributes<HTMLDivElement> {
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
     variant?: "solid" | "wireframe" | "glass";
 }
 
