@@ -164,7 +164,6 @@ export default function InputPanel({
                         value={apiKey}
                         onChange={(e) => {
                             setApiKey(e.target.value);
-                            try { localStorage.setItem("tribunal_harness_api_key", e.target.value); } catch { }
                         }}
                         placeholder="sk-ant-..."
                         className="noir-input"
