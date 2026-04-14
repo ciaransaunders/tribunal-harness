@@ -52,10 +52,13 @@ export default function TribunalHarnessNoir() {
     const [activeTab, setActiveTab] = useState('analysis');
 
     useEffect(() => {
-        try {
-            const stored = localStorage.getItem('tribunal_harness_api_key');
-            if (stored) setApiKey(stored);
-        } catch { setStorageAvailable(false); }
+        try { localStorage.removeItem("tribunal_harness_api_key"); } catch {}
+        fetch("/api/auth", { credentials: "include" })
+            .then(res => res.json())
+            .then(data => {
+                if (data.hasKey) setApiKey("***");
+            })
+            .catch(() => {});
     }, []);
 
     useEffect(() => { saveFSMState(fsmState); }, [fsmState]);
@@ -112,6 +115,7 @@ export default function TribunalHarnessNoir() {
             const messages = [{ role: "user", content: claimText }];
             const res = await fetch(ANTHROPIC_API_URL, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                     'x-api-key': apiKey,
@@ -146,6 +150,7 @@ export default function TribunalHarnessNoir() {
             const text = await file.text();
             const res = await fetch(ANTHROPIC_API_URL, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                     'x-api-key': apiKey,

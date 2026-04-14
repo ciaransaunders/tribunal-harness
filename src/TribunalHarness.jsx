@@ -46,12 +46,18 @@ export default function TribunalHarness() {
     const [expandedClaim, setExpandedClaim] = useState(null);
     const [expandedStage, setExpandedStage] = useState("Employment Tribunal");
 
-    const [apiKey, setApiKey] = useState(() => {
-        try { return localStorage.getItem("tribunal_harness_api_key") || ""; } catch { return ""; }
-    });
-    const [storageAvailable] = useState(() => {
-        try { localStorage.setItem("__test", "1"); localStorage.removeItem("__test"); return true; } catch { return false; }
-    });
+    const [apiKey, setApiKey] = useState("");
+    const [storageAvailable] = useState(true);
+
+    useEffect(() => {
+        try { localStorage.removeItem("tribunal_harness_api_key"); } catch {}
+        fetch("/api/auth", { credentials: "include" })
+            .then(res => res.json())
+            .then(data => {
+                if (data.hasKey) setApiKey("***");
+            })
+            .catch(() => {});
+    }, []);
 
     // Triage state
     const [triageResults, setTriageResults] = useState(null);
@@ -110,6 +116,7 @@ export default function TribunalHarness() {
             setDebateStep("Blue Team drafting initial argument...");
             const draftRes = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
+                credentials: "include",
                 headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                 body: JSON.stringify({
                     model: "claude-sonnet-4-20250514", max_tokens: 2000,
@@ -125,6 +132,7 @@ export default function TribunalHarness() {
             setDebateStep("Red Team attacking argument...");
             const critRes = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
+                credentials: "include",
                 headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                 body: JSON.stringify({
                     model: "claude-sonnet-4-20250514", max_tokens: 2000, system: CRITIC_PROMPT,
@@ -139,6 +147,7 @@ export default function TribunalHarness() {
             setDebateStep("Judge evaluating exchange...");
             const judgeRes = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
+                credentials: "include",
                 headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                 body: JSON.stringify({
                     model: "claude-sonnet-4-20250514", max_tokens: 1000, system: JUDGE_PROMPT,
@@ -159,6 +168,7 @@ export default function TribunalHarness() {
                 setDebateStep("Blue Team revising based on critique...");
                 const revRes = await fetch(ANTHROPIC_API_URL, {
                     method: "POST",
+                    credentials: "include",
                     headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                     body: JSON.stringify({
                         model: "claude-sonnet-4-20250514", max_tokens: 2000,
@@ -204,6 +214,7 @@ export default function TribunalHarness() {
             const truncated = text.slice(0, 8000);
             const response = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
+                credentials: "include",
                 headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
                 body: JSON.stringify({
                     model: "claude-sonnet-4-20250514",
@@ -246,6 +257,7 @@ export default function TribunalHarness() {
         try {
             const response = await fetch(ANTHROPIC_API_URL, {
                 method: "POST",
+                credentials: "include",
                 headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
                 body: JSON.stringify({
                     model: "claude-sonnet-4-20250514", max_tokens: 4000, system: SYSTEM_PROMPT,
