@@ -1,0 +1,3 @@
+## 2024-04-16 - Add explicit htmlFor and id attributes to complex forms
+**Learning:** In complex form panels with inline styling and nested elements (like the consent checkbox wrapped in a label), screen readers and click-to-focus behavior require explicit `htmlFor` on the `<label>` and corresponding `id` on the input element.
+**Action:** Always map `<label htmlFor="id">` to the corresponding `<input id="id">`, `<select id="id">`, or `<textarea id="id">` in React forms to ensure full accessibility and usability.
