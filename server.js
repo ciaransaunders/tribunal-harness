@@ -34,7 +34,6 @@ app.post('/api/anthropic', async (req, res) => {
         const data = await response.json();
         res.status(response.status).json(data);
     } catch (error) {
-        console.error('Error proxying to Anthropic:', error);
         res.status(500).json({ error: 'Internal server error proxying to Anthropic' });
     }
 });
