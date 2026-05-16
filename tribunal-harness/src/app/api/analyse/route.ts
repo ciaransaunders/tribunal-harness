@@ -167,8 +167,6 @@ export async function POST(request: NextRequest) {
 
             return NextResponse.json(parsed);
         } catch {
-            const duration = Date.now() - startTime;
-            console.warn(`[API /api/analyse] Failed to parse JSON, returning raw text. Duration: ${duration}ms`);
             // If Claude didn't return valid JSON, wrap in structured response
             return NextResponse.json({
                 claims: [],
