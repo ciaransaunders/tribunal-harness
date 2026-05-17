@@ -46,6 +46,11 @@ export const LEGAL_DATA_GRAPH = {
     ],
 };
 
+export const LEGAL_DATA_GRAPH_SOURCE_LIST = LEGAL_DATA_GRAPH.statutes.map(s =>
+    `${s.name}: ${s.sections.map(sec => `${sec.ref} ${sec.title} [source:${sec.id}]`).join(", ")}`
+).join("\n") +
+    "\nJudgments: " + LEGAL_DATA_GRAPH.judgments.map(j => `${j.citation} [source:${j.id}]`).join(", ");
+
 export const TASK_TEMPLATES = [
     { id: "t1", label: "Isolate arguments for Rule 3(10) appeal", leverage: 95, estimatedMins: 90, category: "appeal", description: "Identify and draft the core legal errors for oral renewal hearing. Highest-leverage activity if appealing an ET decision." },
     { id: "t2", label: "Prepare remedy schedule", leverage: 88, estimatedMins: 60, category: "hearing", description: "Calculate and document all heads of loss including injury to feelings (Vento bands), pension loss, and future loss." },
