@@ -13,7 +13,21 @@
  * 6. Citation-only: every legal proposition must cite a source
  */
 
-import { ERA_2025 } from "@/lib/constants";
+import { ERA_2025, formatCommencementLabel, isCommencementTbc } from "@/lib/constants";
+
+// F-16 (Hard Rule 6): render a commencement date for prompt injection. A date
+// whose exact day is not yet fixed by a Statutory Instrument gets an explicit
+// "(exact date TBC by SI)" marker, so the prompt's own instruction to flag TBC
+// dates is satisfiable rather than contradicted by a bare, confirmed-looking ISO
+// date. Confirmed dates are left to their existing bare-ISO rendering (surgical:
+// only TBC rendering changes here). TBC status derives from the single source of
+// truth (tracker `tbc` flag via isCommencementTbc), never hardcoded.
+type Era2025Key = keyof typeof ERA_2025;
+function commencement(key: Era2025Key): string {
+  const iso = ERA_2025[key];
+  if (iso === null) return "a date to be confirmed by Statutory Instrument";
+  return formatCommencementLabel(iso, isCommencementTbc(key));
+}
 
 // ─── Prompt Version Constants ────────────────────────────────────────
 // Log these with every API call for audit trail.
@@ -66,10 +80,10 @@ Royal Assent: ${ERA_2025.ROYAL_ASSENT}. You MUST check whether ERA 2025 provisio
 - EDT on/after ${ERA_2025.QUALIFYING_PERIOD_6_MONTHS}: qualifying period for unfair dismissal is 6 months (not 2 years)
 - EDT on/after ${ERA_2025.QUALIFYING_PERIOD_6_MONTHS}: compensatory award cap is removed entirely
 - EDT on/after ${ERA_2025.FIRE_AND_REHIRE_AUTO_UNFAIR}: fire-and-rehire dismissals are automatically unfair
-- Act date on/after ${ERA_2025.ET_TIME_LIMIT_6_MONTHS}: ET time limit is 6 months less 1 day (not 3 months less 1 day)
-- Act date on/after ${ERA_2025.HARASSMENT_ALL_REASONABLE_STEPS}: employer harassment duty is "all reasonable steps" (not "reasonable steps")
-- Act date on/after ${ERA_2025.THIRD_PARTY_HARASSMENT}: third-party harassment liability applies
-- Act date on/after ${ERA_2025.NDA_VOID}: NDAs for harassment/discrimination are void
+- Act date on/after ${commencement("ET_TIME_LIMIT_6_MONTHS")}: ET time limit is 6 months less 1 day (not 3 months less 1 day)
+- Act date on/after ${commencement("HARASSMENT_ALL_REASONABLE_STEPS")}: employer harassment duty is "all reasonable steps" (not "reasonable steps")
+- Act date on/after ${commencement("THIRD_PARTY_HARASSMENT")}: third-party harassment liability applies
+- Act date on/after ${commencement("NDA_VOID")}: NDAs for harassment/discrimination are void
 - From ${ERA_2025.SEXUAL_HARASSMENT_WHISTLEBLOWING}: sexual harassment is a qualifying disclosure for whistleblowing (Part IVA ERA 1996)
 - From ${ERA_2025.INDUSTRIAL_ACTION_DISMISSAL}: industrial action dismissal is automatically unfair (12-week limit removed)
 - Dates marked TBC: flag as "Exact commencement date to be confirmed by Statutory Instrument"
@@ -171,9 +185,9 @@ RULES:
 ERA 2025 AWARENESS:
 Royal Assent: ${ERA_2025.ROYAL_ASSENT}.
 - Qualifying period for unfair dismissal: 6 months from ${ERA_2025.QUALIFYING_PERIOD_6_MONTHS} (currently 2 years)
-- ET time limit: 6 months less 1 day from ${ERA_2025.ET_TIME_LIMIT_6_MONTHS} (currently 3 months less 1 day)
+- ET time limit: 6 months less 1 day from ${commencement("ET_TIME_LIMIT_6_MONTHS")} (currently 3 months less 1 day)
 - Fire and rehire: automatically unfair from ${ERA_2025.FIRE_AND_REHIRE_AUTO_UNFAIR}
-- Harassment duty: "all reasonable steps" from ${ERA_2025.HARASSMENT_ALL_REASONABLE_STEPS}
+- Harassment duty: "all reasonable steps" from ${commencement("HARASSMENT_ALL_REASONABLE_STEPS")}
 
 OUTPUT FORMAT — respond in JSON:
 {

@@ -20,7 +20,7 @@ export default function PricingPage() {
                         { name: "Professional", price: "£49", period: "/month", features: ["Unlimited analyses", "Adversarial Risk Analysis", "Advanced document triage", "Case law database search", "Custom Strategy Schemas", "Priority support"], highlight: true },
                         { name: "Legal Aid", price: "£0", period: "always free", features: ["Unlimited analyses", "Full feature access", "For verified legal aid providers", "Supporting access to justice", "Contact us to verify"], highlight: false },
                     ].map((tier) => (
-                        <div key={tier.name} style={{ padding: "2rem", border: `1px solid ${tier.highlight ? "var(--color-accent-purple)" : "var(--color-border-subtle)"}`, borderRadius: "var(--radius-card)", background: tier.highlight ? "rgba(123,107,245,0.03)" : "transparent" }}>
+                        <div key={tier.name} style={{ padding: "2rem", border: `1px solid ${tier.highlight ? "var(--color-accent-purple)" : "var(--color-border-subtle)"}`, borderRadius: "var(--radius-card)", background: tier.highlight ? "rgba(139,92,246,0.03)" : "transparent" }}>
                             <h3 style={{ fontFamily: "var(--font-sans)", fontWeight: 600, marginBottom: "0.75rem" }}>{tier.name}</h3>
                             <div style={{ marginBottom: "1.5rem" }}>
                                 <span style={{ fontFamily: "var(--font-serif)", fontSize: "2.5rem" }}>{tier.price}</span>

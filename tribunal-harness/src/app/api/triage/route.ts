@@ -13,16 +13,39 @@ import { refineForUser } from "@/services/legal-writing-refinement";
  * near-frontier for extraction and classification tasks.
  */
 
+// F-28: hard cap on upload size to prevent memory exhaustion (arrayBuffer()
+// buffers the whole file). 10 MB comfortably covers legal documents.
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData();
-        const file = formData.get("document") as File | null;
+        const documentField = formData.get("document");
         const currentSchema = formData.get("schema_state") as string | null;
 
-        if (!file) {
+        if (documentField === null) {
             return NextResponse.json(
                 { error: "No document uploaded. Send a file as 'document' in multipart form data." },
                 { status: 400 }
+            );
+        }
+
+        // F-41: a non-file `document` (e.g. a plain string field) must not flow
+        // into .arrayBuffer()/.text() — that throws and surfaces as a 500. Reject
+        // it up front with a clear 400 instead.
+        if (!(documentField instanceof File)) {
+            return NextResponse.json(
+                { error: "The 'document' field must be an uploaded file, not a text value." },
+                { status: 400 }
+            );
+        }
+        const file = documentField;
+
+        // F-28: reject oversized uploads before reading the file into memory.
+        if (file.size > MAX_UPLOAD_BYTES) {
+            return NextResponse.json(
+                { error: `File too large. Maximum upload size is ${MAX_UPLOAD_BYTES / (1024 * 1024)} MB.` },
+                { status: 413 }
             );
         }
 
@@ -100,7 +123,11 @@ export async function POST(request: NextRequest) {
 
         try {
             const parsed = JSON.parse(result.content);
-            parsed._debug = result.debug;
+            // F-43(a): expose internal debug metadata only in development;
+            // strip it from client responses in all other environments.
+            if (process.env.NODE_ENV === "development") {
+                parsed._debug = result.debug;
+            }
             const { payload: refined, refinement } = await refineForUser(
                 "triage",
                 parsed
@@ -113,10 +140,10 @@ export async function POST(request: NextRequest) {
                 query_array: [],
                 document_summary: result.content,
                 extracted_text: extractedText.substring(0, 5000),
-                _debug: {
-                    ...result.debug,
-                    error: "JSON mapping failed"
-                }
+                // F-43(a): internal debug metadata is development-only.
+                ...(process.env.NODE_ENV === "development"
+                    ? { _debug: { ...result.debug, error: "JSON mapping failed" } }
+                    : {}),
             };
             const { payload: refined, refinement } = await refineForUser(
                 "triage",

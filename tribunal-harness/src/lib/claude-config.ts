@@ -19,12 +19,15 @@
 // Check: https://docs.anthropic.com/en/docs/about-claude/models
 
 export const CLAUDE_MODELS = {
+  // F-5: upgraded to current-generation model ids (founder-approved).
   /** Frontier model – complex legal reasoning, adversarial debate, multi-document synthesis */
-  OPUS: "claude-opus-4-20250514",
+  OPUS: "claude-opus-4-8",
   /** Mid-tier model – standard drafting, analysis, structured output */
-  SONNET: "claude-sonnet-4-20250514",
+  SONNET: "claude-sonnet-5",
   /** Fast/cheap model – triage, extraction, classification, bulk tagging */
-  HAIKU: "claude-haiku-4-20250514",
+  // T-C1 / F-28: previous id "claude-haiku-4-20250514" was a phantom (no such
+  // model exists); corrected to the real Haiku 4.5 id.
+  HAIKU: "claude-haiku-4-5-20251001",
 } as const;
 
 export type ClaudeModel = (typeof CLAUDE_MODELS)[keyof typeof CLAUDE_MODELS];
@@ -35,6 +38,17 @@ export type ClaudeModel = (typeof CLAUDE_MODELS)[keyof typeof CLAUDE_MODELS];
 // 'medium' = balanced – matches frontier quality at ~76% fewer tokens
 // 'high'   = almost always thinks, best for complex reasoning
 // 'max'    = maximum reasoning depth, highest cost
+//
+// F-34: The current-generation models routed above (Opus 4.8, Sonnet 5) support
+// adaptive thinking + the effort parameter, and REJECT the legacy
+// `thinking: {type:"enabled", budget_tokens:N}` shape with a 400. The intended
+// client-side mapping (to be implemented in claude-client.ts — owned by another
+// agent — NOT here) is:
+//   • send `output_config: { effort: <this endpoint's EffortLevel> }`
+//   • convert `thinking: {type:"enabled", budget_tokens}` → `thinking: {type:"adaptive"}`
+//     (drop budget_tokens; it 400s on current-gen models)
+// Until claude-client.ts performs that mapping, the `effort` field and the
+// `budget_tokens` figures below are ADVISORY config metadata, not wire params.
 
 export type EffortLevel = "low" | "medium" | "high" | "max";
 
@@ -86,50 +100,55 @@ export const ENDPOINT_CONFIG: Record<string, EndpointConfig> = {
   },
 
   // ── Analysis (standard complexity) ─────────────────────────────
+  // F-4: max_tokens must exceed budget_tokens (API 400s otherwise). Was 4096 < 10K.
   analyse: {
     model: CLAUDE_MODELS.SONNET,
     effort: "medium",
-    max_tokens: 4096,
+    max_tokens: 16_000,
     thinking: { type: "enabled", budget_tokens: 10_000 },
     temperature: 0.3,
     label: "Analysis (Sonnet)",
   },
 
   // ── Analysis (high complexity — multi-jurisdiction, novel law) ──
+  // F-4: max_tokens must exceed budget_tokens (API 400s otherwise). Was 8192 < 20K.
   analyse_complex: {
     model: CLAUDE_MODELS.OPUS,
     effort: "high",
-    max_tokens: 8192,
+    max_tokens: 24_000,
     thinking: { type: "enabled", budget_tokens: 20_000 },
     temperature: 0.3,
     label: "Analysis Complex (Opus)",
   },
 
   // ── Adversarial Debate: Drafter ────────────────────────────────
+  // F-4: max_tokens must exceed budget_tokens (API 400s otherwise). Was 3000 < 8K.
   drafter: {
     model: CLAUDE_MODELS.SONNET,
     effort: "medium",
-    max_tokens: 3000,
+    max_tokens: 12_000,
     thinking: { type: "enabled", budget_tokens: 8_000 },
     temperature: 0.3,
     label: "Drafter (Sonnet)",
   },
 
   // ── Adversarial Debate: Critic ─────────────────────────────────
+  // F-4: max_tokens must exceed budget_tokens (API 400s otherwise). Was 3000 < 15K.
   critic: {
     model: CLAUDE_MODELS.OPUS,
     effort: "high",
-    max_tokens: 3000,
+    max_tokens: 20_000,
     thinking: { type: "enabled", budget_tokens: 15_000 },
     temperature: 0.7,
     label: "Critic (Opus)",
   },
 
   // ── Adversarial Debate: Judge ──────────────────────────────────
+  // F-4: max_tokens must exceed budget_tokens (API 400s otherwise). Was 3000 < 10K.
   judge: {
     model: CLAUDE_MODELS.OPUS,
     effort: "medium",
-    max_tokens: 3000,
+    max_tokens: 14_000,
     thinking: { type: "enabled", budget_tokens: 10_000 },
     temperature: 0.1,
     label: "Judge (Opus)",
@@ -150,19 +169,32 @@ export const ENDPOINT_CONFIG: Record<string, EndpointConfig> = {
 };
 
 // ─── Cost Estimation ─────────────────────────────────────────────────
-// Approximate pricing per million tokens (USD, as of March 2026).
-// Update when Anthropic changes pricing.
+// F-17: pricing per million tokens (USD). Pricing last verified 2026-07-08
+// against the claude-api model reference for the current-gen ids above.
+// Verified against claude.com/pricing on 2026-07-09.
+//   • Opus 4.8   — $5 in / $25 out
+//   • Sonnet 5   — $3 in / $15 out (standard; an intro rate of $2/$10 applies
+//                  through 2026-08-31, then standard $3/$15 from 2026-09-01 —
+//                  we deliberately use the standard rate so cost estimates
+//                  never understate spend once the intro period ends)
+//   • Haiku 4.5  — $1 in / $5 out (previous $0.25/$1.25 was stale)
+//
+// Tokenizer note: Opus 4.7+ and Sonnet 5 use a newer tokenizer that produces
+// ~30% more tokens for the same text, so token-based estimates run
+// correspondingly higher than older-generation figures.
 
 const PRICING: Record<
   ClaudeModel,
   { input_per_mtok: number; output_per_mtok: number }
 > = {
-  [CLAUDE_MODELS.OPUS]: { input_per_mtok: 15.0, output_per_mtok: 75.0 },
+  [CLAUDE_MODELS.OPUS]: { input_per_mtok: 5.0, output_per_mtok: 25.0 },
   [CLAUDE_MODELS.SONNET]: { input_per_mtok: 3.0, output_per_mtok: 15.0 },
-  [CLAUDE_MODELS.HAIKU]: { input_per_mtok: 0.25, output_per_mtok: 1.25 },
+  [CLAUDE_MODELS.HAIKU]: { input_per_mtok: 1.0, output_per_mtok: 5.0 },
 };
 
-const USD_TO_GBP = 0.79; // approximate, update periodically
+// NOTE: estimate only — USD_TO_GBP is a hardcoded approximation, not a live FX
+// rate; refresh periodically against live FX. GBP figures are indicative.
+const USD_TO_GBP = 0.79;
 
 export interface CostEstimate {
   model: ClaudeModel;
@@ -199,5 +231,14 @@ export function estimateCost(
  * Get the endpoint config, defaulting to 'analyse' if the key is not found.
  */
 export function getEndpointConfig(endpoint: string): EndpointConfig {
-  return ENDPOINT_CONFIG[endpoint] ?? ENDPOINT_CONFIG.analyse;
+  const config = ENDPOINT_CONFIG[endpoint];
+  if (!config) {
+    // F-33: don't silently fall back — a typo'd endpoint key would otherwise
+    // route to 'analyse' (wrong model/temp) with no signal.
+    console.warn(
+      `[claude-config] Unknown endpoint "${endpoint}"; falling back to 'analyse'.`,
+    );
+    return ENDPOINT_CONFIG.analyse;
+  }
+  return config;
 }

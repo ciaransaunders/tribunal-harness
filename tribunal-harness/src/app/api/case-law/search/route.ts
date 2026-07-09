@@ -294,7 +294,12 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get("q")?.trim() ?? "";
     const claimType = searchParams.get("claim_type") ?? undefined;
     const tierFilter = searchParams.get("tier") ?? undefined;
-    const limit = Math.min(parseInt(searchParams.get("limit") ?? "10"), 20);
+    // T-A12 / F-19: parse defensively — NaN/missing → default 10; clamp to 1..20
+    // (reject 0 and negatives, cap at 20). Guards against .slice(0, NaN) → [].
+    const parsedLimit = Number.parseInt(searchParams.get("limit") ?? "10", 10);
+    const limit = Number.isNaN(parsedLimit)
+        ? 10
+        : Math.min(Math.max(parsedLimit, 1), 20);
 
     if (!query && !claimType) {
         return NextResponse.json(

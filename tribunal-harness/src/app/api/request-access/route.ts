@@ -14,6 +14,12 @@ import { join } from "path";
  * - Falls back gracefully if email is not configured
  */
 
+// F-19 (FOUNDER item — do NOT self-migrate): leads are appended to a local
+// JSON-lines file on the serverless filesystem. This filesystem is EPHEMERAL:
+// on Vercel/Lambda it is per-invocation and read-only across deploys, so every
+// captured lead is LOST on redeploy, scale-out, or cold start. This is a data-
+// loss risk, not a durable store. A durable backend (Supabase/Postgres) MUST
+// replace this before launch. Tracked as a founder-gated migration.
 const DATA_DIR = join(process.cwd(), "data");
 const REQUESTS_FILE = join(DATA_DIR, "access-requests.jsonl");
 
@@ -116,7 +122,10 @@ export async function POST(request: NextRequest) {
         // Send email notification (secondary, non-blocking)
         await sendEmailNotification(record);
 
-        console.log("[Request Access] Persisted:", { name, email, user_type, timestamp: record.timestamp });
+        // F-18: never log PII (name/email) to console — logs are retained and
+        // often shipped to third-party aggregators. Log only non-identifying
+        // metadata for observability.
+        console.log("[Request Access] Persisted lead:", { user_type, timestamp: record.timestamp });
 
         return NextResponse.json({
             success: true,

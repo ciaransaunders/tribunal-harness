@@ -59,6 +59,56 @@ describe("POST /api/roadmap", () => {
         const json = await res.json();
         expect(Array.isArray(json)).toBe(true);
     });
+
+    // F-22: the roadmap must show the ACTUAL statutory deadline, not an invented
+    // "+30 days" ET1 date, and must not present a fabricated CMPH date.
+    it("shows the real statutory deadline for ET1 (no invented +30 days) and an illustrative CMPH", async () => {
+        const req = makeRequest({ dateOfLastAct: "2025-06-16", claimType: "unfair_dismissal" });
+        const res = await POST(req);
+        expect(res.status).toBe(200);
+        const steps = (await res.json())[0].steps as Array<{
+            label: string;
+            deadline: string | null;
+            critical: boolean;
+            description: string;
+        }>;
+        const acas = steps.find((s) => s.label === "ACAS Early Conciliation")!;
+        const et1 = steps.find((s) => s.label === "ET1 Claim Form")!;
+        const cmph = steps.find((s) => s.label === "Case Management Preliminary Hearing")!;
+
+        // ET1 is the statutory deadline itself — identical to the ACAS step,
+        // NOT 30 days later. This is the anti-conservative bug F-22 removes.
+        expect(et1.deadline).toBe(acas.deadline);
+        expect(typeof et1.deadline).toBe("string");
+
+        // CMPH is not a claimant deadline: no concrete date, flagged illustrative.
+        expect(cmph.deadline).toBeNull();
+        expect(cmph.critical).toBe(false);
+        expect(cmph.description.toLowerCase()).toContain("illustrative");
+    });
+
+    // F-10-style: a malformed date must 400, not 500 from a thrown parse.
+    it("returns 400 for a malformed dateOfLastAct instead of 500", async () => {
+        const bad = makeRequest({ dateOfLastAct: "not-a-date", claimType: "unfair_dismissal" });
+        expect((await POST(bad)).status).toBe(400);
+        const impossible = makeRequest({ dateOfLastAct: "2026-02-31" });
+        expect((await POST(impossible)).status).toBe(400);
+    });
+
+    // F-27: a 500 must not leak internal error detail to the client.
+    it("returns a generic 500 with a request_id and no internal details on bad JSON", async () => {
+        const req = new NextRequest("http://localhost:3000/api/roadmap", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: "{ not valid json",
+        });
+        const res = await POST(req);
+        expect(res.status).toBe(500);
+        const json = await res.json();
+        expect(json.error).toBe("Internal server error");
+        expect(json.details).toBeUndefined();
+        expect(typeof json.request_id).toBe("string");
+    });
 });
 
 // ---------------------------------------------------------------------------

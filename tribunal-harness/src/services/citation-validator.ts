@@ -7,9 +7,11 @@
  * verify each citation against ground truth.
  *
  * Trust levels:
- * - VERIFIED: Exact match on case name in verified database
- * - CHECK: Partial match (case name found but citation may differ)
- * - QUARANTINED: No match found — citation cannot be verified
+ * - VERIFIED: Case name matches a verified authority AND the neutral citation
+ *   supplied in the input exactly matches that authority's neutral citation.
+ * - CHECK: Case name matches, but the citation is absent, differs, or cannot be
+ *   extracted — the citation is not independently verified.
+ * - QUARANTINED: No match found — citation cannot be verified.
  */
 
 import {
@@ -17,9 +19,62 @@ import {
     findAuthorityByPartialMatch,
     type VerifiedAuthority,
 } from "@/lib/verified-authorities";
-import { verifyCitation } from "@/services/find-case-law";
+import { verifyCitation, normaliseCitation } from "@/services/find-case-law";
 
 export type TrustLevel = "VERIFIED" | "CHECK" | "QUARANTINED";
+
+// T-A1 / F-1,F-2,F-3,F-31 — Epistemic-quarantine correctness.
+// A case-NAME match is not sufficient to VERIFY a citation. VERIFIED must mean
+// the neutral citation supplied in the INPUT exactly matches the verified
+// authority's neutral citation. Otherwise the name matched but the citation is
+// absent, wrong, or unverifiable, and the honest verdict is CHECK.
+
+/**
+ * Pull a neutral-citation token out of a free-text citation string.
+ * Handles the common UK formats, e.g. "[2025] UKSC 99", "[2007] EWCA Civ 33",
+ * "[1988] ICR 142", "[2005] IRLR 258", "[2023] EAT 2", and EAT reference
+ * numbers with underscores like "[1978] UKEAT 0108_78_2007".
+ * Returns null when no neutral citation is present.
+ */
+export function extractNeutralCitation(input: string): string | null {
+    const m = input.match(/\[\s*\d{4}\s*\]\s*[A-Za-z][A-Za-z./ ]*?\s*[\d_]+/);
+    return m ? m[0].replace(/\s+/g, " ").trim() : null;
+}
+
+/** True iff two neutral citations are the same once punctuation/whitespace/case is normalised. */
+function citationsEqual(a: string, b: string): boolean {
+    return normaliseCitation(a) === normaliseCitation(b);
+}
+
+/**
+ * Resolve a name match to a trust level. VERIFIED only when the input carries a
+ * neutral citation that exactly matches the verified authority; otherwise CHECK
+ * (name matched, citation not independently verified). This is the single choke
+ * point both the single-word and multi-word name branches, and Strategy 2, run
+ * through — so a name match can never award VERIFIED on its own.
+ */
+function resolveNameMatch(
+    trimmed: string,
+    authority: VerifiedAuthority
+): CitationValidationResult {
+    const inputCitation = extractNeutralCitation(trimmed);
+    if (inputCitation && citationsEqual(inputCitation, authority.neutralCitation)) {
+        return {
+            originalCitation: trimmed,
+            trustLevel: "VERIFIED",
+            matchedAuthority: authority,
+            reason: `Exact match: ${authority.fullName} ${authority.neutralCitation}`,
+        };
+    }
+    return {
+        originalCitation: trimmed,
+        trustLevel: "CHECK",
+        matchedAuthority: authority,
+        reason: inputCitation
+            ? `Case name matches ${authority.fullName}, but the cited neutral citation (${inputCitation}) does not match the verified citation ${authority.neutralCitation}. Manual check recommended.`
+            : `Case name matches ${authority.fullName}, but no neutral citation was supplied to verify against ${authority.neutralCitation}. Manual check recommended.`,
+    };
+}
 
 export interface CitationValidationResult {
     /** The original citation string from Claude */
@@ -54,19 +109,16 @@ export function validateCitation(citation: string): CitationValidationResult {
 
     // Strategy 1: Extract likely case name and try exact short name match
     // Common patterns: "Polkey v AE Dayton Services Ltd [1987] UKHL 8"
-    // or "BHS v Burchell [1978]"
+    // or "BHS v Burchell [1978] UKEAT 0108_78_2007"
+    // T-A1: a name match hands off to resolveNameMatch, which only awards
+    // VERIFIED when the input's neutral citation exactly matches the authority.
     const words = trimmed.split(/\s+/);
     const firstWord = words[0];
 
     // Try the first word as a short name (e.g. "Polkey", "Shamoon", "Homer")
     const exactMatch = findAuthorityByShortName(firstWord);
     if (exactMatch) {
-        return {
-            originalCitation: trimmed,
-            trustLevel: "VERIFIED",
-            matchedAuthority: exactMatch,
-            reason: `Exact match: ${exactMatch.fullName} ${exactMatch.neutralCitation}`,
-        };
+        return resolveNameMatch(trimmed, exactMatch);
     }
 
     // Try multi-word short names (e.g. "BHS v Burchell", "Iceland Frozen Foods")
@@ -80,34 +132,16 @@ export function validateCitation(citation: string): CitationValidationResult {
     for (const pattern of shortNamePatterns) {
         const match = findAuthorityByShortName(pattern);
         if (match) {
-            return {
-                originalCitation: trimmed,
-                trustLevel: "VERIFIED",
-                matchedAuthority: match,
-                reason: `Exact match: ${match.fullName} ${match.neutralCitation}`,
-            };
+            return resolveNameMatch(trimmed, match);
         }
     }
 
-    // Strategy 2: Try partial match against the full citation text
+    // Strategy 2: Try partial match against the full citation text.
+    // T-A1: this too only awards VERIFIED when the exact neutral citation is
+    // present (via resolveNameMatch), otherwise CHECK.
     const partialMatch = findAuthorityByPartialMatch(trimmed);
     if (partialMatch) {
-        // Check if the neutral citation also appears (stronger match)
-        if (trimmed.includes(partialMatch.neutralCitation)) {
-            return {
-                originalCitation: trimmed,
-                trustLevel: "VERIFIED",
-                matchedAuthority: partialMatch,
-                reason: `Full match: case name and neutral citation both verified — ${partialMatch.fullName}`,
-            };
-        }
-        // Case name found but citation may differ — mark as CHECK
-        return {
-            originalCitation: trimmed,
-            trustLevel: "CHECK",
-            matchedAuthority: partialMatch,
-            reason: `Case name matches ${partialMatch.fullName}, but citation not independently verified. Manual check recommended.`,
-        };
+        return resolveNameMatch(trimmed, partialMatch);
     }
 
     // Strategy 3: No match at all

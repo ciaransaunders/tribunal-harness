@@ -5,12 +5,12 @@ out/
 dist/
 
 # Environment & secrets
-.env
-.env.local
-.env.*.local
-*secret*
-*key*
-*token*
+# T-0.4 / F-39: precise patterns — broad globs (*key*, *token*, *secret*)
+# would wrongly ignore legit source files like tokenizer.ts
+.env*
+*.key
+*.pem
+secrets.*
 
 # Data (may contain personal/sensitive information)
 data/
@@ -32,6 +32,10 @@ next-env.d.ts
 .DS_Store
 Thumbs.db
 
+# Package-manager / tooling cache artefacts (T-0.4 / F-36)
+_cacache/
+_update-notifier-last-checked
+
 # Python (if scripts present)
 __pycache__/
 *.pyc
@@ -46,3 +50,6 @@ coverage/
 .idea/
 *.swp
 *.swo
+
+# Local-only MCP dev config (machine-specific absolute path)
+.mcp.json

@@ -3,6 +3,10 @@
     "version": "2.0.0",
     "private": true,
     "description": "UK Employment Tribunal legal intelligence platform",
+    "engines": {
+        "node": ">=22"
+    },
+    "//scripts-note": "Scripts assume a POSIX shell (inline VAR=val prefixes); on Windows run under Git Bash/WSL. (T-0.3 / F-38)",
     "scripts": {
         "dev": "next dev --turbopack",
         "build": "next build",

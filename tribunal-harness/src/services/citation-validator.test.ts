@@ -31,18 +31,29 @@ describe("validateCitation", () => {
         expect(result.matchedAuthority?.shortName).toBe("Shamoon");
     });
 
-    it("returns VERIFIED for multi-word short name (BHS v Burchell)", () => {
-        const result = validateCitation("BHS v Burchell [1978]");
+    it("returns VERIFIED for multi-word short name with exact citation (BHS v Burchell)", () => {
+        // T-A1: name match alone is not enough — the exact neutral citation must
+        // also be present. Supplying the verified citation yields VERIFIED.
+        const result = validateCitation(
+            "BHS v Burchell [1978] UKEAT 0108_78_2007"
+        );
         expect(result.trustLevel).toBe("VERIFIED");
         expect(result.matchedAuthority?.shortName).toBe("BHS v Burchell");
     });
 
-    it("returns VERIFIED for multi-word short name (Iceland Frozen Foods)", () => {
+    it("returns VERIFIED for multi-word short name with exact citation (Iceland Frozen Foods)", () => {
         const result = validateCitation(
-            "Iceland Frozen Foods Ltd v Jones [1982]"
+            "Iceland Frozen Foods Ltd v Jones [1982] UKEAT 0062_82_2207"
         );
         expect(result.trustLevel).toBe("VERIFIED");
         expect(result.matchedAuthority?.shortName).toBe("Iceland Frozen Foods");
+    });
+
+    it("returns CHECK for a multi-word name match with no neutral citation (BHS v Burchell)", () => {
+        // T-A1: name matches but no citation supplied → CHECK, never VERIFIED.
+        const result = validateCitation("BHS v Burchell [1978]");
+        expect(result.trustLevel).toBe("CHECK");
+        expect(result.matchedAuthority?.shortName).toBe("BHS v Burchell");
     });
 
     it("returns VERIFIED for full name partial match with neutral citation", () => {
@@ -53,12 +64,47 @@ describe("validateCitation", () => {
         expect(result.matchedAuthority?.shortName).toBe("Essop");
     });
 
-    it("returns CHECK for partial match without neutral citation", () => {
+    it("returns CHECK when the case name matches but the citation differs", () => {
+        // T-A2 / F-1: previously this asserted VERIFIED on a name-only match with
+        // a NON-matching citation ("[1988] AC 344" is not Polkey's "[1987] UKHL 8").
+        // That was the epistemic-quarantine lie. A wrong citation must be CHECK.
         const result = validateCitation(
             "Polkey v AE Dayton Services Ltd [1988] AC 344"
         );
-        // Matches on "Polkey" short name exactly → VERIFIED
+        expect(result.trustLevel).toBe("CHECK");
+        expect(result.matchedAuthority?.shortName).toBe("Polkey");
+    });
+
+    // T-A2 / F-1,F-2,F-3,F-31 — negative and happy-path cases proving VERIFIED
+    // means an EXACT neutral-citation match, not a name match.
+    it("(i) returns CHECK for the right name with a WRONG citation (Polkey [2025] UKSC 99)", () => {
+        // The flagship regression: a fabricated citation attached to a real case
+        // name must NOT be VERIFIED.
+        const result = validateCitation(
+            "Polkey v AE Dayton Services Ltd [2025] UKSC 99"
+        );
+        expect(result.trustLevel).toBe("CHECK");
+        expect(result.trustLevel).not.toBe("VERIFIED");
+        expect(result.matchedAuthority?.shortName).toBe("Polkey");
+    });
+
+    it("(ii) returns QUARANTINED for a wrong name with a real citation", () => {
+        // A real neutral citation string ([1987] UKHL 8 is Polkey's) attached to
+        // a case name that is not in the database must be QUARANTINED — the name
+        // is what anchors the match, and it does not match anything.
+        const result = validateCitation(
+            "Nonexistent Authority v Someone [1987] UKHL 8"
+        );
+        expect(result.trustLevel).toBe("QUARANTINED");
+        expect(result.matchedAuthority).toBeUndefined();
+    });
+
+    it("(iii) returns VERIFIED for the right name with the right citation (Polkey)", () => {
+        const result = validateCitation(
+            "Polkey v AE Dayton Services Ltd [1987] UKHL 8"
+        );
         expect(result.trustLevel).toBe("VERIFIED");
+        expect(result.matchedAuthority?.shortName).toBe("Polkey");
     });
 
     it("returns CHECK when case name is found but citation format differs", () => {
@@ -87,7 +133,10 @@ describe("validateCitation", () => {
     });
 
     it("is case-insensitive for short name matching", () => {
-        const result = validateCitation("polkey v AE Dayton Services Ltd");
+        // Lower-case "polkey" still matches; the exact citation makes it VERIFIED.
+        const result = validateCitation(
+            "polkey v AE Dayton Services Ltd [1987] UKHL 8"
+        );
         expect(result.trustLevel).toBe("VERIFIED");
     });
 
@@ -144,9 +193,10 @@ describe("validateAllCitations", () => {
     });
 
     it("handles all verified citations", () => {
+        // T-A1: exact neutral citations required for VERIFIED.
         const authorities = [
-            { citation: "Polkey v AE Dayton [1987]" },
-            { citation: "Homer v Chief Constable [2012]" },
+            { citation: "Polkey v AE Dayton [1987] UKHL 8" },
+            { citation: "Homer v Chief Constable [2012] UKSC 15" },
         ];
 
         const { summary } = validateAllCitations(authorities);

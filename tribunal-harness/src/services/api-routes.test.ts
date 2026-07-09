@@ -1,5 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
+import fs from "fs";
+import os from "os";
+import path from "path";
 
 // ---------------------------------------------------------------------------
 // API Route Integration Tests
@@ -236,13 +239,26 @@ describe("POST /api/analyse — degraded mode", () => {
     });
 
     it("returns 200 degraded response when API key is missing", async () => {
-        const req = makeRequest({ claim_type: "unfair_dismissal", narrative_text: "I was dismissed" });
+        // F-12: /api/analyse now requires explicit UK GDPR Art 9(2)(a) consent
+        // (gate runs before the degraded-mode branch). Supply consent:true so the
+        // request reaches the degraded schema-fallback path this test exercises.
+        const req = makeRequest({ claim_type: "unfair_dismissal", narrative_text: "I was dismissed", consent: true });
         const res = await POST(req);
         // Should return 200 with schema-derived content, not 500
         expect(res.status).toBe(200);
         const json = await res.json();
         expect(json.statutory_provisions).toBeDefined();
         expect(json.procedural_notes).toBeDefined();
+    });
+
+    it("returns 400 when consent is not given (UK GDPR Art 9 gate)", async () => {
+        // F-12: special-category narrative must not be processed without explicit
+        // consent. Absent/false consent must be rejected — assert the safer gate.
+        const req = makeRequest({ claim_type: "unfair_dismissal", narrative_text: "I was dismissed" });
+        const res = await POST(req);
+        expect(res.status).toBe(400);
+        const json = await res.json();
+        expect(json.error).toContain("consent");
     });
 });
 
@@ -300,6 +316,49 @@ describe("GET /api/case-law/search", () => {
             expect(r.tier).toBe("binding");
         });
     });
+
+    // T-A12 / F-19: limit input must be parsed defensively and clamped to 1..20.
+    // A NaN/negative/zero limit previously produced .slice(0, NaN) → empty array.
+    it("defaults to 10 results when no limit is given", async () => {
+        const req = makeGetRequest("http://localhost:3000/api/case-law/search?claim_type=unfair_dismissal");
+        const res = await GET(req);
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.results.length).toBeLessThanOrEqual(10);
+    });
+
+    it("defaults to 10 when limit is non-numeric (abc)", async () => {
+        const req = makeGetRequest("http://localhost:3000/api/case-law/search?claim_type=unfair_dismissal&limit=abc");
+        const res = await GET(req);
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.results.length).toBeGreaterThan(0);
+        expect(json.results.length).toBeLessThanOrEqual(10);
+    });
+
+    it("clamps limit=0 up to at least 1 result", async () => {
+        const req = makeGetRequest("http://localhost:3000/api/case-law/search?claim_type=unfair_dismissal&limit=0");
+        const res = await GET(req);
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.results.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("clamps limit=999 down to a maximum of 20", async () => {
+        const req = makeGetRequest("http://localhost:3000/api/case-law/search?claim_type=unfair_dismissal&limit=999");
+        const res = await GET(req);
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.results.length).toBeLessThanOrEqual(20);
+    });
+
+    it("clamps negative limit (-5) up to at least 1 result", async () => {
+        const req = makeGetRequest("http://localhost:3000/api/case-law/search?claim_type=unfair_dismissal&limit=-5");
+        const res = await GET(req);
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.results.length).toBeGreaterThanOrEqual(1);
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -307,10 +366,29 @@ describe("GET /api/case-law/search", () => {
 // ---------------------------------------------------------------------------
 describe("POST /api/request-access", () => {
     let POST: (req: NextRequest) => Promise<Response>;
+    let raTmpDir: string;
+    let raCwdSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeAll(() => {
+        // T-0.5 / F-35 — persist the JSONL lead file to a temp sandbox, never the repo.
+        raTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "th-request-access-"));
+    });
+
+    afterAll(() => {
+        fs.rmSync(raTmpDir, { recursive: true, force: true });
+    });
 
     beforeEach(async () => {
+        // T-0.5 / F-35 — DATA_DIR is computed from process.cwd() at module load;
+        // redirect cwd before (re-)importing so the route writes into raTmpDir.
+        raCwdSpy = vi.spyOn(process, "cwd").mockReturnValue(raTmpDir);
+        vi.resetModules();
         const mod = await import("../app/api/request-access/route");
         POST = mod.POST;
+    });
+
+    afterEach(() => {
+        raCwdSpy.mockRestore();
     });
 
     it("returns 400 for invalid JSON payload", async () => {

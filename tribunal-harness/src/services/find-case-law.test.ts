@@ -19,6 +19,14 @@ const FEED = `<?xml version="1.0" encoding="utf-8"?>
 const EMPTY_FEED = `<?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom" xmlns:tna="https://caselaw.nationalarchives.gov.uk"></feed>`;
 
+// A feed whose ONLY entry carries neutral citation [2020] UKSC 1 but an unrelated
+// title — the real "FMX Food Merchants v HMRC". A hallucinated case name that
+// borrows this citation number must NOT be VERIFIED against it (the FMX-class hole).
+const FMX_FEED = `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:tna="https://caselaw.nationalarchives.gov.uk">
+<entry><title>FMX Food Merchants Import Export Co Ltd v HMRC</title><link href="https://caselaw.nationalarchives.gov.uk/uksc/2020/1" rel="alternate"/><published>2020-01-29T00:00:00+00:00</published><updated>2020-01-29T00:00:00+00:00</updated><author><name>United Kingdom Supreme Court</name></author><tna:identifier slug="uksc/2020/1" type="ukncn">[2020] UKSC 1</tna:identifier></entry>
+</feed>`;
+
 function mockFetchOk(body: string) {
     return vi.fn(async () => ({ ok: true, status: 200, text: async () => body }) as unknown as Response);
 }
@@ -120,6 +128,49 @@ describe("verifyCitation (mocked fetch) — the double-check", () => {
     it("source 'unavailable' (not falsely verified) when upstream is down", async () => {
         vi.stubGlobal("fetch", mockFetchAbort());
         const r = await verifyCitation({ citation: "[2017] UKSC 27", caseName: "Essop v Home Office" });
+        expect(r.source).toBe("unavailable");
+        expect(r.trustLevel).toBe("QUARANTINED");
+    });
+
+    // Regression — the FMX-class false-VERIFIED hole. An exact neutral-citation
+    // NUMBER match is only VERIFIED when the cited party name is consistent with
+    // the matched judgment title.
+    it("(a) correct name + matching title + matching cite → VERIFIED", async () => {
+        vi.stubGlobal("fetch", mockFetchOk(FMX_FEED));
+        const r = await verifyCitation({ citation: "[2020] UKSC 1", caseName: "FMX Food Merchants v HMRC" });
+        expect(r.trustLevel).toBe("VERIFIED");
+        expect(r.matchedCitation).toBe("[2020] UKSC 1");
+    });
+
+    it("(b) fabricated name + real cite whose title differs → CHECK, never VERIFIED", async () => {
+        vi.stubGlobal("fetch", mockFetchOk(FMX_FEED));
+        // Citation-only hostile input (no separate caseName), as /api/analyse can pass.
+        const r = await verifyCitation({ citation: "Nonexistent v Fabricated Ltd [2020] UKSC 1" });
+        expect(r.trustLevel).not.toBe("VERIFIED");
+        expect(r.trustLevel).toBe("CHECK");
+        // Still surfaces what the number actually resolves to, so the user can check.
+        expect(r.matchedTitle).toContain("FMX Food Merchants");
+        expect(r.matchedCitation).toBe("[2020] UKSC 1");
+        expect(r.url).toContain("uksc/2020/1");
+    });
+
+    it("(b') fabricated name passed as caseName + real cite → CHECK, never VERIFIED", async () => {
+        vi.stubGlobal("fetch", mockFetchOk(FMX_FEED));
+        const r = await verifyCitation({ citation: "[2020] UKSC 1", caseName: "Nonexistent v Fabricated Ltd" });
+        expect(r.trustLevel).toBe("CHECK");
+        expect(r.matchedTitle).toContain("FMX Food Merchants");
+    });
+
+    it("(c) bare citation, no name → VERIFIED on exact match (nothing to contradict)", async () => {
+        vi.stubGlobal("fetch", mockFetchOk(FMX_FEED));
+        const r = await verifyCitation({ citation: "[2020] UKSC 1" });
+        expect(r.trustLevel).toBe("VERIFIED");
+        expect(r.matchedCitation).toBe("[2020] UKSC 1");
+    });
+
+    it("(d) upstream unavailable → source 'unavailable', never VERIFIED", async () => {
+        vi.stubGlobal("fetch", mockFetchAbort());
+        const r = await verifyCitation({ citation: "Nonexistent v Fabricated Ltd [2020] UKSC 1" });
         expect(r.source).toBe("unavailable");
         expect(r.trustLevel).toBe("QUARANTINED");
     });

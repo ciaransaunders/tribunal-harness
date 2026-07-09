@@ -1,13 +1,33 @@
 /**
- * Unit tests for the LLM_PROVIDER=agent wiring in claude-client.ts.
+ * Unit tests for claude-client.ts.
  *
- * These tests exercise the env-driven provider selector without making any
- * network calls. The agent stand-in is fully deterministic and offline, so
- * we can assert exactly what the contract returns.
+ * Two groups:
+ *  1. LLM_PROVIDER=agent wiring — exercises the env-driven provider selector
+ *     with no network calls (deterministic offline stand-in).
+ *  2. Real Anthropic SDK path — the SDK is mocked (no network) so we can assert
+ *     the request payload and response handling: F-4 budget clamp, F-21
+ *     truncation surfacing, and the F-22 production refusal for the stand-in.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { callClaude, isClientAvailable } from "./claude-client";
+
+// Mock the Anthropic SDK so no network call is ever made. The default export is
+// a class whose instances expose `messages.create` backed by a shared spy we
+// configure per test.
+const mockCreate = vi.fn();
+vi.mock("@anthropic-ai/sdk", () => ({
+    default: class {
+        messages = { create: mockCreate };
+        // The client factory calls `new Anthropic({ apiKey })`.
+        constructor(_opts: unknown) {}
+    },
+}));
+
+import {
+    callClaude,
+    isClientAvailable,
+    ClaudeTruncatedResponseError,
+} from "./claude-client";
 
 describe("claude-client — LLM_PROVIDER=agent wiring", () => {
     beforeEach(() => {
@@ -85,5 +105,127 @@ describe("claude-client — LLM_PROVIDER=agent wiring", () => {
             promptVersion: "v2",
         });
         expect(result).toBeNull();
+    });
+
+    // F-22: refuse to serve the stand-in in a production build.
+    it("callClaude() refuses the agent stand-in when NODE_ENV=production", async () => {
+        vi.stubEnv("LLM_PROVIDER", "agent");
+        vi.stubEnv("ANTHROPIC_API_KEY", "");
+        vi.stubEnv("NODE_ENV", "production");
+
+        await expect(
+            callClaude({
+                endpoint: "analyse",
+                system: "sys",
+                userMessage: "claim_type: unfair_dismissal",
+                promptVersion: "v2",
+            })
+        ).rejects.toThrow(/not permitted when.*production|SIMULATED/i);
+    });
+});
+
+describe("claude-client — real SDK path (mocked)", () => {
+    beforeEach(() => {
+        vi.unstubAllEnvs();
+        vi.stubEnv("LLM_PROVIDER", ""); // force the real SDK path
+        vi.stubEnv("ANTHROPIC_API_KEY", "sk-test-key");
+        mockCreate.mockReset();
+    });
+
+    afterEach(() => {
+        vi.unstubAllEnvs();
+    });
+
+    const okResponse = (overrides: Record<string, unknown> = {}) => ({
+        content: [{ type: "text", text: '{"ok":true}' }],
+        usage: { input_tokens: 10, output_tokens: 20 },
+        model: "claude-sonnet-4-20250514",
+        stop_reason: "end_turn",
+        ...overrides,
+    });
+
+    // F-4: an inverted budget/max_tokens pair is clamped, not sent as-is.
+    it("clamps thinking.budget_tokens to max_tokens-1 when inverted", async () => {
+        mockCreate.mockResolvedValue(okResponse());
+
+        const result = await callClaude({
+            endpoint: "analyse",
+            system: "s",
+            userMessage: "u",
+            promptVersion: "v2",
+            configOverride: {
+                max_tokens: 1000,
+                thinking: { type: "enabled", budget_tokens: 5000 },
+            },
+        });
+
+        expect(result).not.toBeNull();
+        expect(mockCreate).toHaveBeenCalledTimes(1);
+        const sent = mockCreate.mock.calls[0][0] as {
+            max_tokens: number;
+            thinking?: { type: string; budget_tokens: number };
+            temperature?: number;
+        };
+        // Budget clamped strictly below max_tokens.
+        expect(sent.thinking?.type).toBe("enabled");
+        expect(sent.thinking?.budget_tokens).toBe(999);
+        expect(sent.thinking!.budget_tokens).toBeLessThan(sent.max_tokens);
+        // Temperature must be unset when thinking is enabled.
+        expect(sent.temperature).toBeUndefined();
+    });
+
+    it("passes a valid budget through unchanged", async () => {
+        mockCreate.mockResolvedValue(okResponse());
+
+        await callClaude({
+            endpoint: "analyse",
+            system: "s",
+            userMessage: "u",
+            promptVersion: "v2",
+            configOverride: {
+                max_tokens: 8000,
+                thinking: { type: "enabled", budget_tokens: 4000 },
+            },
+        });
+
+        const sent = mockCreate.mock.calls[0][0] as {
+            thinking?: { budget_tokens: number };
+        };
+        expect(sent.thinking?.budget_tokens).toBe(4000);
+    });
+
+    // F-21: a max_tokens stop_reason surfaces a distinct, typed error.
+    it("throws ClaudeTruncatedResponseError when stop_reason is max_tokens", async () => {
+        mockCreate.mockResolvedValue(
+            okResponse({
+                stop_reason: "max_tokens",
+                content: [{ type: "text", text: '{"claims":[{"partial' }],
+            })
+        );
+
+        await expect(
+            callClaude({
+                endpoint: "analyse",
+                system: "s",
+                userMessage: "u",
+                promptVersion: "v2",
+                configOverride: { thinking: { type: "disabled" } },
+            })
+        ).rejects.toBeInstanceOf(ClaudeTruncatedResponseError);
+    });
+
+    it("returns the parsed content on a normal end_turn response", async () => {
+        mockCreate.mockResolvedValue(okResponse());
+
+        const result = await callClaude({
+            endpoint: "analyse",
+            system: "s",
+            userMessage: "u",
+            promptVersion: "v2",
+            configOverride: { thinking: { type: "disabled" } },
+        });
+
+        expect(result).not.toBeNull();
+        expect(result?.content).toBe('{"ok":true}');
     });
 });

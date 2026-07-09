@@ -92,6 +92,33 @@ export function normaliseCitation(c: string): string {
     return c.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+// Party-name boilerplate that carries no identifying signal — dropped before the
+// title cross-check so it can never be the sole "match" that stamps VERIFIED.
+const BOILERPLATE_PARTY_TOKENS = new Set([
+    "ltd",
+    "plc",
+    "llp",
+    "and",
+    "ors",
+    "others",
+    "limited",
+    "group",
+    "the",
+]);
+
+/**
+ * Significant party tokens from a case name, for cross-checking against a matched
+ * judgment title. Splits on " v "/" v. " into parties, then into word tokens,
+ * dropping tokens <=3 chars and boilerplate (ltd/plc/others/…).
+ */
+export function significantPartyTokens(name: string): string[] {
+    return name
+        .split(/\s+v\.?\s+/i)
+        .flatMap((party) => party.split(/[^a-z0-9]+/i))
+        .map((t) => t.toLowerCase())
+        .filter((t) => t.length > 3 && !BOILERPLATE_PARTY_TOKENS.has(t));
+}
+
 /** Pull a neutral-citation token (e.g. "[2021] UKSC 5", "[2009] EWCA Civ 1202", "[2026] EAT 90") out of a free string. */
 export function extractNeutralCitation(text: string): string | null {
     const m = text.match(/\[\s*\d{4}\s*\]\s*[A-Za-z][A-Za-z./ ]*?\s*\d+/);
@@ -269,11 +296,50 @@ export async function verifyCitation(input: { citation?: string; caseName?: stri
         return result;
     }
 
-    // Exact neutral-citation match → VERIFIED.
+    // Exact neutral-citation match → candidate for VERIFIED.
     if (ncn) {
         const wanted = normaliseCitation(ncn);
         const exact = env.results.find((h) => h.neutralCitation && normaliseCitation(h.neutralCitation) === wanted);
         if (exact) {
+            // Finding: a matching neutral-citation NUMBER is NOT sufficient to VERIFY.
+            // A hallucinated case name can carry a real citation number — e.g. a fake
+            // "Nonexistent v Fabricated Ltd [2020] UKSC 1" collides with the genuine
+            // "FMX Food Merchants v HMRC [2020] UKSC 1" and was previously stamped
+            // VERIFIED. Cross-check the cited party name against the matched title
+            // before returning VERIFIED. Conservative rule: unrelated title → CHECK.
+            //
+            // nameToCheck: the explicit caseName if given, else the case-name fragment
+            // of the citation with the neutral-citation token stripped out (recovers
+            // "Nonexistent v Fabricated Ltd" from a hostile citation-only input).
+            let nameToCheck = caseName;
+            if (!nameToCheck) {
+                const rawNcn = citation.match(/\[\s*\d{4}\s*\]\s*[A-Za-z][A-Za-z./ ]*?\s*\d+/);
+                nameToCheck = (rawNcn ? citation.replace(rawNcn[0], " ") : citation)
+                    .replace(/[[\]]/g, " ")
+                    .trim();
+            }
+
+            const tokens = nameToCheck ? significantPartyTokens(nameToCheck) : [];
+            const titleLc = exact.title.toLowerCase();
+            // Only a name that carries significant tokens can contradict the match.
+            // A bare citation (no words) has nothing to contradict → keep VERIFIED.
+            const nameContradictsTitle =
+                tokens.length > 0 && !tokens.some((t) => titleLc.includes(t));
+
+            if (nameContradictsTitle) {
+                const result: VerifyResult = {
+                    trustLevel: "CHECK",
+                    reason: `Neutral citation ${ncn} exists but resolves to '${exact.title}', which does not match the cited party name(s) — likely a mis-citation; verify manually.`,
+                    source: "find_case_law",
+                    matchedTitle: exact.title,
+                    matchedCitation: exact.neutralCitation ?? undefined,
+                    slug: exact.slug ?? undefined,
+                    url: exact.url ?? undefined,
+                };
+                verifyCache.set(cacheKey, { at: Date.now(), result });
+                return result;
+            }
+
             const result: VerifyResult = {
                 trustLevel: "VERIFIED",
                 reason: `Exact neutral-citation match in Find Case Law: ${exact.neutralCitation} — ${exact.title}.`,

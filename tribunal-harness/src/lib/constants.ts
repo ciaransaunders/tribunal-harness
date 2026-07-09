@@ -42,7 +42,22 @@ export const ERA_2025 = {
 // SINGLE SOURCE OF TRUTH — import this wherever tracker data is needed.
 // Do NOT hardcode ERA 2025 provision data in individual page files.
 // ---------------------------------------------------------------------------
+// Note on `tbc`: true when the exact commencement day is NOT yet fixed by a
+// Statutory Instrument (all Oct-2026 provisions + the 2027 "SI awaited" entries).
+// Prompts/UI branch on this (via TBC_COMMENCEMENT_KEYS / formatCommencementLabel)
+// so an unconfirmed date is never asserted as fixed. (F-16)
 export const ERA_2025_TRACKER = [
+    {
+        // F-24(b): industrial-action ballot/notice changes are in force but had
+        // no tracker row despite the root spec listing them as in-force provisions.
+        provision: "Trade union ballot mandate & notice periods",
+        old_position: "6-month ballot mandate; 14-day industrial action notice",
+        new_position: "12-month ballot mandate; 10-day industrial action notice",
+        commencement: "18 Feb 2026",
+        status: "in_force" as const,
+        key: "TRADE_UNION_BALLOT_CHANGES",
+        tbc: false,
+    },
     {
         provision: "Industrial action dismissal — auto unfair",
         old_position: "12-week protected period",
@@ -50,6 +65,7 @@ export const ERA_2025_TRACKER = [
         commencement: "18 Feb 2026",
         status: "in_force" as const,
         key: "INDUSTRIAL_ACTION_DISMISSAL",
+        tbc: false,
     },
     {
         provision: "SSP from day 1",
@@ -58,6 +74,7 @@ export const ERA_2025_TRACKER = [
         commencement: "6 Apr 2026",
         status: "in_force" as const,
         key: "SSP_DAY_ONE",
+        tbc: false,
     },
     {
         provision: "Paternity leave — day 1 right",
@@ -66,6 +83,7 @@ export const ERA_2025_TRACKER = [
         commencement: "6 Apr 2026",
         status: "in_force" as const,
         key: "PATERNITY_LEAVE_DAY_ONE",
+        tbc: false,
     },
     {
         provision: "Parental leave — day 1 right",
@@ -74,6 +92,7 @@ export const ERA_2025_TRACKER = [
         commencement: "6 Apr 2026",
         status: "in_force" as const,
         key: "PARENTAL_LEAVE_DAY_ONE",
+        tbc: false,
     },
     {
         provision: "Sexual harassment as whistleblowing",
@@ -82,6 +101,7 @@ export const ERA_2025_TRACKER = [
         commencement: "6 Apr 2026",
         status: "in_force" as const,
         key: "SEXUAL_HARASSMENT_WHISTLEBLOWING",
+        tbc: false,
     },
     {
         provision: "Collective redundancy — 180-day period",
@@ -90,6 +110,7 @@ export const ERA_2025_TRACKER = [
         commencement: "6 Apr 2026",
         status: "in_force" as const,
         key: "COLLECTIVE_REDUNDANCY_180_DAYS",
+        tbc: false,
     },
     {
         provision: "Fair Work Agency established",
@@ -98,6 +119,7 @@ export const ERA_2025_TRACKER = [
         commencement: "7 Apr 2026",
         status: "in_force" as const,
         key: "FAIR_WORK_AGENCY",
+        tbc: false,
     },
     {
         provision: "ET time limit — 6 months",
@@ -106,6 +128,7 @@ export const ERA_2025_TRACKER = [
         commencement: "Oct 2026 (SI awaited)",
         status: "upcoming" as const,
         key: "ET_TIME_LIMIT_6_MONTHS",
+        tbc: true,
     },
     {
         provision: "Harassment — all reasonable steps",
@@ -114,6 +137,7 @@ export const ERA_2025_TRACKER = [
         commencement: "Oct 2026 (SI awaited)",
         status: "upcoming" as const,
         key: "HARASSMENT_ALL_REASONABLE_STEPS",
+        tbc: true,
     },
     {
         provision: "Third-party harassment liability",
@@ -122,6 +146,7 @@ export const ERA_2025_TRACKER = [
         commencement: "Oct 2026 (SI awaited)",
         status: "upcoming" as const,
         key: "THIRD_PARTY_HARASSMENT",
+        tbc: true,
     },
     {
         provision: "NDAs void for harassment/discrimination",
@@ -130,6 +155,7 @@ export const ERA_2025_TRACKER = [
         commencement: "Oct 2026 (SI awaited)",
         status: "upcoming" as const,
         key: "NDA_VOID",
+        tbc: true,
     },
     {
         provision: "Union right to inform workers",
@@ -138,6 +164,7 @@ export const ERA_2025_TRACKER = [
         commencement: "Oct 2026 (SI awaited)",
         status: "upcoming" as const,
         key: "UNION_INFORM_RIGHT",
+        tbc: true,
     },
     {
         provision: "Qualifying period — 6 months",
@@ -146,6 +173,7 @@ export const ERA_2025_TRACKER = [
         commencement: "1 Jan 2027",
         status: "upcoming" as const,
         key: "QUALIFYING_PERIOD_6_MONTHS",
+        tbc: false,
     },
     {
         provision: "Compensatory award — uncapped",
@@ -154,6 +182,7 @@ export const ERA_2025_TRACKER = [
         commencement: "1 Jan 2027",
         status: "upcoming" as const,
         key: "COMPENSATORY_AWARD_UNCAPPED",
+        tbc: false,
     },
     {
         provision: "Fire and rehire — automatically unfair",
@@ -162,6 +191,18 @@ export const ERA_2025_TRACKER = [
         commencement: "1 Jan 2027",
         status: "upcoming" as const,
         key: "FIRE_AND_REHIRE_AUTO_UNFAIR",
+        tbc: false,
+    },
+    {
+        // F-24(a): the master spec lists "fire and replace: automatically unfair"
+        // alongside fire-and-rehire, but it existed only as a schema select option.
+        provision: "Fire and replace — automatically unfair",
+        old_position: "No specific statutory protection",
+        new_position: "Automatically unfair (dismiss and replace with new hire)",
+        commencement: "1 Jan 2027",
+        status: "upcoming" as const,
+        key: "FIRE_AND_REPLACE_AUTO_UNFAIR",
+        tbc: false,
     },
     {
         provision: "Zero-hours contract rights",
@@ -170,6 +211,7 @@ export const ERA_2025_TRACKER = [
         commencement: "2027 (SI awaited)",
         status: "awaiting_si" as const,
         key: "ZERO_HOURS_PROTECTIONS",
+        tbc: true,
     },
     {
         provision: "Maternity — extended redundancy protection",
@@ -178,6 +220,7 @@ export const ERA_2025_TRACKER = [
         commencement: "2027 (SI awaited)",
         status: "awaiting_si" as const,
         key: "MATERNITY_EXTENDED_PROTECTION",
+        tbc: true,
     },
     {
         provision: "Flexible working — strengthened right",
@@ -186,17 +229,61 @@ export const ERA_2025_TRACKER = [
         commencement: "2027 (SI awaited)",
         status: "awaiting_si" as const,
         key: "FLEXIBLE_WORKING_STRENGTHENED",
+        tbc: true,
+    },
+    {
+        // F-24(a): AGGREGATE_REDUNDANCY_THRESHOLD existed as a constant but had no
+        // tracker row, so it never surfaced in the tracker UI/API.
+        provision: "Collective redundancy — aggregate threshold",
+        old_position: "20+ redundancies counted per establishment",
+        new_position: "Threshold aggregated across the whole organisation",
+        commencement: "2027 (SI awaited)",
+        status: "awaiting_si" as const,
+        key: "AGGREGATE_REDUNDANCY_THRESHOLD",
+        tbc: true,
     },
 ] as const;
 
 export type ERA2025TrackerEntry = (typeof ERA_2025_TRACKER)[number];
 
+// F-32: validate the ERA_2025_TIME_LIMIT_COMMENCEMENT env override at module load.
+// A non-empty but malformed value must fail loudly. The previous `env || default`
+// let a garbage string through, where the deadline calculator's parseUTC produced
+// NaN and `actDate >= NaN` was always false — silently pinning a permanent 3-month
+// regime with no signal to the operator. Unset/empty → assumed default (Oct 2026).
+function isValidIsoDate(value: string): boolean {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const parsed = new Date(`${value}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime())) return false;
+    // Reject silent calendar overflow (e.g. 2026-02-30 → 2026-03-02).
+    return parsed.toISOString().slice(0, 10) === value;
+}
+
+export function resolveTimeLimitCommencement(
+    override: string | undefined = process.env.ERA_2025_TIME_LIMIT_COMMENCEMENT,
+): string {
+    if (override === undefined || override.trim() === "") {
+        return ERA_2025.ET_TIME_LIMIT_6_MONTHS;
+    }
+    if (!isValidIsoDate(override)) {
+        throw new Error(
+            `Invalid ERA_2025_TIME_LIMIT_COMMENCEMENT="${override}": expected a valid ` +
+                `YYYY-MM-DD date. Refusing to start rather than silently falling back ` +
+                `to a permanent 3-month regime.`,
+        );
+    }
+    return override;
+}
+
 export const TIME_LIMIT_CONFIG = {
     PRE_ERA_2025_MONTHS: 3,
     POST_ERA_2025_MONTHS: 6,
-    COMMENCEMENT_DATE:
-        process.env.ERA_2025_TIME_LIMIT_COMMENCEMENT ||
-        ERA_2025.ET_TIME_LIMIT_6_MONTHS,
+    COMMENCEMENT_DATE: resolveTimeLimitCommencement(),
+    // F-3 support: the Oct 2026 SI is not yet confirmed. The deadline calculator
+    // reads this to decide whether to hedge (compute/show the conservative shorter
+    // 3-month regime) for acts on/after the assumed commencement date. Flip to true
+    // (alongside setting ERA_2025_TIME_LIMIT_COMMENCEMENT) only once the SI confirms.
+    TIME_LIMIT_SI_CONFIRMED: false,
 } as const;
 
 export const QUALIFYING_PERIOD_CONFIG = {
@@ -260,14 +347,19 @@ export const CLAIM_TYPES = [
         label: "Fire and Rehire",
         statute: "ERA 2025",
         era2025: true,
-        effectiveFrom: "2027-01-01",
+        // F-24(b): derive from the single source of truth rather than duplicating
+        // a literal date that could drift from ERA_2025.
+        effectiveFrom: ERA_2025.FIRE_AND_REHIRE_AUTO_UNFAIR,
     },
     {
         id: "zero_hours_rights",
         label: "Zero-Hours Contract Rights",
         statute: "ERA 2025",
         era2025: true,
-        effectiveFrom: "2027-01-01",
+        // F-24(c): ZERO_HOURS_PROTECTIONS is deliberately null ("do not rely on a
+        // fixed date"). Previously this asserted 2027-01-01 — an internal
+        // contradiction. Align to null so nothing gates on a phantom commencement.
+        effectiveFrom: ERA_2025.ZERO_HOURS_PROTECTIONS,
     },
 ] as const;
 
@@ -321,4 +413,27 @@ export function formatCommencementMonth(iso: string): string {
         year: "numeric",
         timeZone: "UTC",
     }).format(new Date(iso));
+}
+
+// ---------------------------------------------------------------------------
+// F-16: TBC-awareness for prompts/UI.
+// Set of ERA_2025 keys whose exact commencement day is not yet fixed by an SI,
+// derived from the tracker's `tbc` flag so there is one source of truth.
+// ---------------------------------------------------------------------------
+export const TBC_COMMENCEMENT_KEYS: ReadonlySet<string> = new Set(
+    ERA_2025_TRACKER.filter((entry) => entry.tbc).map((entry) => entry.key),
+);
+
+export function isCommencementTbc(key: string): boolean {
+    return TBC_COMMENCEMENT_KEYS.has(key);
+}
+
+// Render a commencement date for user-facing copy / prompt injection. For a TBC
+// entry, emit month + year with an explicit "(exact date TBC by SI)" marker so
+// an unconfirmed date is never asserted as fixed (Hard Rule 6). For a confirmed
+// entry, emit the full date.
+export function formatCommencementLabel(iso: string, tbc: boolean): string {
+    return tbc
+        ? `${formatCommencementMonth(iso)} (exact date TBC by SI)`
+        : formatCommencementDate(iso);
 }

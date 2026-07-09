@@ -3,6 +3,7 @@ import Link from "next/link";
 const PLATFORM_LINKS = [
     { href: "/how-it-works", label: "How It Works" },
     { href: "/analysis-engine", label: "Analysis Engine" },
+    { href: "/adversarial-debate", label: "Adversarial Debate" },
     { href: "/product", label: "Architecture" },
     { href: "/case-law-db", label: "Case Law DB" },
     { href: "/pricing", label: "Pricing" },

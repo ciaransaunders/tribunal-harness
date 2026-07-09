@@ -2,7 +2,8 @@
 **Last updated: 18 February 2026**
 
 > **⚠ Current state (June 2026):** This master spec is largely historical and in
-> places out of date. The active app is `tribunal-harness/tribunal-harness/` —
+> places out of date. The active app is `tribunal-harness/` (one level below this
+> file, i.e. `<repo-root>/tribunal-harness/`) —
 > read its `CLAUDE.md` first. Since this spec: all 10 claim schemas are
 > implemented; mobile nav, Trust dropdown and the light theme are done; ESLint is
 > configured and 193 Vitest tests pass; `/api/debate` is a working 3-agent engine.
@@ -78,7 +79,9 @@ Key completed work:
 
 ### Core Engineering — COMPLETED
 - **Deadline calculator:** Built and unit-tested. Handles the 3-month/6-month regime
-  change, UK bank holidays, and ACAS Early Conciliation extensions.
+  change, ACAS Early Conciliation extensions, and non-working-day warnings (it flags
+  when the statutory deadline falls on a weekend/bank holiday but does NOT move the
+  deadline — the ET time limit is not extended; see Deadline Calculator Logic below).
 - **Build:** Next.js project builds with zero linting errors.
 
 ### Known Open Items (next sprint)
@@ -246,15 +249,36 @@ function calculateDeadline(actDate: Date, claimType: ClaimType): DeadlineResult 
     deadline = applyACASExtension(deadline, acasNotificationDate, acasCertificateDate)
   }
 
-  // Bank holiday adjustment: if deadline falls on bank holiday, advance to next working day
-  deadline = adjustForBankHoliday(deadline, ENGLAND_WALES_BANK_HOLIDAYS)
+  // Non-working-day handling: the statutory ET time limit is NOT extended when it
+  // falls on a weekend or bank holiday. Online presentation is available 24/7, so the
+  // limit does not roll to the next working day. Do NOT move the deadline — keep the
+  // true statutory date and emit a warning telling the claimant to file on or before it.
+  const nonWorkingDayWarning = isNonWorkingDay(deadline, ENGLAND_WALES_BANK_HOLIDAYS)
+    ? 'Your deadline falls on a weekend/bank holiday — present your claim on or before that date; the limit is not extended.'
+    : null
 
-  return { deadline, regime: actDate >= ERA_2025_TIME_LIMIT_COMMENCEMENT ? 'post' : 'pre', tbc: ERA_2025_TIME_LIMIT_TBC }
+  return {
+    baseDeadline,                 // deadline before any ACAS extension
+    deadline,                     // final statutory deadline (unchanged by non-working days)
+    warning: nonWorkingDayWarning,
+    regime: actDate >= ERA_2025_TIME_LIMIT_COMMENCEMENT ? 'post' : 'pre',
+    tbc: ERA_2025_TIME_LIMIT_TBC,
+  }
 }
 ```
 
+> **Change note (9 July 2026, founder decision):** The calculator no longer advances a
+> deadline that lands on a weekend/bank holiday to the next working day. Under the case
+> law (*Swainston v Hetton Victory Club*; *Miah v Axis Security*) the statutory ET time
+> limit does not move, and online presentation is available 24/7 — so a non-working-day
+> deadline still expires on its true statutory date. The tool reports that date and warns
+> the user to file on or before it. This is the conservative/safe direction (Hard Rule 4:
+> assume the shorter deadline, never give false confidence on time limits) and it
+> **supersedes** the earlier "advance to next working day" instruction.
+
 **Every transitional edge case must have a unit test.** Especially: acts straddling the
-commencement date, ongoing acts, ACAS period crossing the commencement date.
+commencement date, ongoing acts, ACAS period crossing the commencement date, and
+deadlines falling on a weekend/bank holiday (warning emitted, date unchanged).
 
 ---
 
@@ -443,6 +467,7 @@ Errors in this section are critical failures. The tool must get UK employment la
 | Continuing acts (EA 2010) | Time runs from end of last act in series (s123(3)(a)) |
 | Just and equitable extension | Tribunal discretion — discrimination claims only |
 | Not reasonably practicable | Tribunal discretion — unfair dismissal claims only |
+| Deadline on weekend/bank holiday | Statutory limit is NOT extended; it expires on the true statutory date (online filing is 24/7 — *Swainston v Hetton Victory Club*; *Miah v Axis Security*). Report the date and warn the claimant to file on or before it. Do NOT advance to the next working day |
 
 ### Qualifying Period (ERA 2025-Aware)
 
