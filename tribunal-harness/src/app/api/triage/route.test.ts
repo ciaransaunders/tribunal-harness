@@ -39,6 +39,27 @@ describe.skipIf(!hasFile)("POST /api/triage — non-LLM branches", () => {
         expect(json.error).toContain("No document");
     });
 
+    // F-41: a non-file `document` field must be rejected as 400, not throw a 500.
+    it("returns 400 when 'document' is a text value rather than a file", async () => {
+        const form = new FormData();
+        form.append("document", "I am a string, not a file");
+        const res = await POST(makeRequest(form));
+        expect(res.status).toBe(400);
+        const json = await res.json();
+        expect(json.error).toContain("must be an uploaded file");
+    });
+
+    // F-28: uploads over the size cap must be rejected with 413 before buffering.
+    it("returns 413 for an upload exceeding the 10 MB cap", async () => {
+        const oversized = "a".repeat(10 * 1024 * 1024 + 1);
+        const form = new FormData();
+        form.append("document", new File([oversized], "big.txt", { type: "text/plain" }));
+        const res = await POST(makeRequest(form));
+        expect(res.status).toBe(413);
+        const json = await res.json();
+        expect(json.error).toContain("File too large");
+    });
+
     it("returns 400 for an unsupported file extension", async () => {
         const form = new FormData();
         form.append(

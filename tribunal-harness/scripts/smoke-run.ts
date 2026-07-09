@@ -237,6 +237,8 @@ async function runAnalyse(): Promise<SectionReport> {
             claim_type: "unfair_dismissal",
             mode: "narrative",
             narrative_text: NARRATIVE,
+            // F-12: /api/analyse now requires explicit UK GDPR Art 9(2)(a) consent.
+            consent: true,
         });
         const res = await mod.POST(req);
         const body = await res.json();

@@ -4,6 +4,9 @@
   "description": "UK Employment Tribunal analysis engine",
   "main": "index.js",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "concurrently \"vite\" \"node server.js\"",
     "build": "vite build",

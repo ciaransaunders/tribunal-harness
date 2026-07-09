@@ -28,6 +28,10 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
+# Package-manager / tooling cache artefacts (T-0.4 / F-36)
+_cacache/
+_update-notifier-last-checked
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
@@ -36,10 +40,12 @@ next-env.d.ts
 .vercel
 
 # Merged from .gitignore_draft
-# Secret / credential files (by name pattern)
-*secret*
-*key*
-*token*
+# Secret / credential files
+# T-0.4 / F-39: precise patterns — broad globs (*key*, *token*, *secret*)
+# would wrongly ignore legit source files like tokenizer.ts
+*.key
+*.pem
+secrets.*
 
 # Logs (*.log catch-all)
 *.log

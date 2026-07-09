@@ -26,24 +26,42 @@ interface APITrackerEntry {
 // API-specific metadata layered on top of the canonical tracker.
 // Keyed by ERA_2025_TRACKER `key`. Dates/positions/status are NOT duplicated
 // here — they are read from constants.ts at map time below.
+//
+// F-11 (Hard Rule 7 — no fabricated compliance claims): each `implemented`
+// entry below was re-audited against real code in src/. An entry may only claim
+// "implemented" if a concrete mechanism exists (a schema field/option, or a
+// service). Several previously claimed mechanisms that do NOT exist in the
+// codebase (a remedy calculator; paternity/parental "qualifying service checks";
+// the unfair-dismissal schema "checking" EDT) have been downgraded to "planned".
+// The qualifyingPeriod() service (Phase A, src/services/qualifying-period.ts)
+// exists but is NOT wired into the schema/analyse UI, so QUALIFYING_PERIOD_6_MONTHS
+// stays "planned" until wired.
 const API_METADATA: Record<
     string,
     { tool_status: APITrackerEntry["tool_status"]; notes: string }
 > = {
     INDUSTRIAL_ACTION_DISMISSAL: { tool_status: "implemented", notes: "Added to unfair dismissal schema auto-unfair grounds" },
-    SSP_DAY_ONE: { tool_status: "implemented", notes: "Updated remedy considerations" },
-    PATERNITY_LEAVE_DAY_ONE: { tool_status: "implemented", notes: "Updated qualifying service checks" },
-    PARENTAL_LEAVE_DAY_ONE: { tool_status: "implemented", notes: "Updated qualifying service checks" },
+    // F-11: no remedy engine exists in src/ — SSP is not modelled anywhere yet.
+    SSP_DAY_ONE: { tool_status: "planned", notes: "No remedy/pay engine exists yet — planned." },
+    // F-11: no paternity/parental "qualifying service check" exists in src/.
+    PATERNITY_LEAVE_DAY_ONE: { tool_status: "planned", notes: "No day-one-right service check implemented yet — planned." },
+    PARENTAL_LEAVE_DAY_ONE: { tool_status: "planned", notes: "No day-one-right service check implemented yet — planned." },
     SEXUAL_HARASSMENT_WHISTLEBLOWING: { tool_status: "implemented", notes: "Added to whistleblowing schema disclosure categories. Creates dual-track claim possibility." },
-    COLLECTIVE_REDUNDANCY_180_DAYS: { tool_status: "implemented", notes: "Updated remedy calculator" },
+    // F-11: no remedy calculator exists in src/ — collective-redundancy award is not modelled.
+    COLLECTIVE_REDUNDANCY_180_DAYS: { tool_status: "planned", notes: "No remedy calculator exists yet — planned." },
     FAIR_WORK_AGENCY: { tool_status: "not_applicable", notes: "Enforcement body — no direct schema impact" },
     ET_TIME_LIMIT_6_MONTHS: { tool_status: "implemented", notes: "Deadline calculator applies correct regime based on act date. Commencement date configurable." },
     HARASSMENT_ALL_REASONABLE_STEPS: { tool_status: "implemented", notes: "Harassment schema updated with new field for employer steps standard" },
     THIRD_PARTY_HARASSMENT: { tool_status: "implemented", notes: "Added third_party_harassment field to harassment schema" },
     NDA_VOID: { tool_status: "implemented", notes: "Added nda_clause field to harassment schema" },
     UNION_INFORM_RIGHT: { tool_status: "not_applicable", notes: "Procedural change — no direct schema impact" },
-    QUALIFYING_PERIOD_6_MONTHS: { tool_status: "implemented", notes: "Unfair dismissal schema checks EDT against commencement date" },
-    COMPENSATORY_AWARD_UNCAPPED: { tool_status: "implemented", notes: "Remedy calculator applies cap or uncapped based on EDT" },
+    // F-11: qualifyingPeriod() service exists (src/services/qualifying-period.ts)
+    // but is NOT wired into the schema/analyse UI. The schema only carries
+    // declarative metadata; nothing computes the regime for the user yet.
+    QUALIFYING_PERIOD_6_MONTHS: { tool_status: "planned", notes: "qualifyingPeriod() service built but not yet wired into schema/analyse UI — planned." },
+    // F-11: no remedy calculator exists in src/. The schema flags the cap change
+    // as metadata only; nothing applies a cap or uncapped figure by EDT.
+    COMPENSATORY_AWARD_UNCAPPED: { tool_status: "planned", notes: "Schema flags the cap change as metadata; no remedy calculator exists yet — planned." },
     FIRE_AND_REHIRE_AUTO_UNFAIR: { tool_status: "implemented", notes: "New claim type schema created with financial distress defence fields" },
     ZERO_HOURS_PROTECTIONS: { tool_status: "implemented", notes: "New claim type schema created. Exact commencement date to be confirmed by SI." },
     MATERNITY_EXTENDED_PROTECTION: { tool_status: "planned", notes: "Will be integrated when secondary legislation confirms scope" },

@@ -115,10 +115,41 @@ export async function fetchPdfAsMarkdown(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), opts?.timeoutMs ?? DEFAULT_TIMEOUT_MS);
     try {
-        const resp = await fetch(parsed.toString(), {
+        // F-36: do NOT auto-follow redirects. An allowlisted host with an open
+        // redirect would otherwise bounce us to an internal/arbitrary host,
+        // defeating the SSRF allowlist. Handle redirects manually and re-validate
+        // every hop's target against the allowlist before following it.
+        let currentUrl = parsed.toString();
+        let resp = await fetch(currentUrl, {
             headers: { "User-Agent": "tribunal-harness/1.0", Accept: "application/pdf" },
             signal: controller.signal,
+            redirect: "manual",
         });
+        let hops = 0;
+        while (resp.status >= 300 && resp.status < 400) {
+            if (++hops > 5) {
+                return { status: "error", detail: "Too many redirects.", sourceUrl: url };
+            }
+            const location = resp.headers.get("location");
+            if (!location) {
+                return { status: "error", detail: "Redirect without a Location header.", sourceUrl: url };
+            }
+            // Resolve relative redirects against the current URL, then re-check the allowlist.
+            const next = new URL(location, currentUrl).toString();
+            if (!isAllowedPdfUrl(next)) {
+                return {
+                    status: "forbidden_host",
+                    detail: "Refusing to follow redirect to a non-allowlisted host (SSRF guard).",
+                    sourceUrl: url,
+                };
+            }
+            currentUrl = next;
+            resp = await fetch(currentUrl, {
+                headers: { "User-Agent": "tribunal-harness/1.0", Accept: "application/pdf" },
+                signal: controller.signal,
+                redirect: "manual",
+            });
+        }
         if (!resp.ok) {
             if (resp.status >= 500 || resp.status === 429) {
                 return { status: "upstream_unavailable", detail: `Source returned ${resp.status}.`, sourceUrl: url };

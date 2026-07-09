@@ -66,3 +66,77 @@ describe("GET /api/era-2025/tracker", () => {
         }
     });
 });
+
+// ---------------------------------------------------------------------------
+// F-11 (Hard Rule 7 — no fabricated compliance claims).
+// An entry may only claim tool_status:"implemented" if a concrete mechanism
+// exists in src/ (a schema field/option, or a wired service). The Jul 2026
+// audit verified each implemented key against real code and downgraded claims
+// whose mechanism does not exist (a remedy/pay engine; paternity/parental
+// day-one service checks; an EDT-checking unfair-dismissal schema). The
+// qualifyingPeriod() service exists but is NOT wired into schema/analyse, so it
+// stays "planned".
+// ---------------------------------------------------------------------------
+describe("GET /api/era-2025/tracker — tool_status honesty (F-11)", () => {
+    let GET: () => Promise<Response>;
+
+    beforeEach(async () => {
+        const mod = await import("./route");
+        GET = mod.GET;
+    });
+
+    // Provisions whose "implemented" claim is backed by real code in src/.
+    const VERIFIED_IMPLEMENTED = new Set<string>([
+        "Industrial action dismissal — auto unfair", // unfair-dismissal schema option
+        "Sexual harassment as whistleblowing", // whistleblowing schema disclosure category
+        "ET time limit — 6 months", // src/services/deadline-calculator.ts
+        "Harassment — all reasonable steps", // harassment schema field
+        "Third-party harassment liability", // harassment schema field
+        "NDAs void for harassment/discrimination", // harassment schema field
+        "Fire and rehire — automatically unfair", // fire-and-rehire schema
+        "Zero-hours contract rights", // zero-hours-rights schema
+    ]);
+
+    // Provisions downgraded by the audit — their claimed mechanism is absent
+    // (or unwired). None of these may read as "implemented".
+    const MUST_NOT_BE_IMPLEMENTED = new Set<string>([
+        "SSP from day 1",
+        "Paternity leave — day 1 right",
+        "Parental leave — day 1 right",
+        "Collective redundancy — 180-day period",
+        "Qualifying period — 6 months",
+        "Compensatory award — uncapped",
+    ]);
+
+    it("marks implemented exactly the audited-real mechanisms — no more", async () => {
+        const res = await GET();
+        const json = (await res.json()) as { changes: TrackerChange[] };
+        const implemented = new Set(
+            json.changes.filter((c) => c.tool_status === "implemented").map((c) => c.provision),
+        );
+        expect(implemented).toEqual(VERIFIED_IMPLEMENTED);
+    });
+
+    it("does not claim implemented for any downgraded provision", async () => {
+        const res = await GET();
+        const json = (await res.json()) as { changes: TrackerChange[] };
+        for (const c of json.changes) {
+            if (MUST_NOT_BE_IMPLEMENTED.has(c.provision)) {
+                expect(c.tool_status, `"${c.provision}" must not claim implemented`).not.toBe(
+                    "implemented",
+                );
+            }
+        }
+    });
+
+    it("no implemented note advertises a mechanism the audit found missing", async () => {
+        const res = await GET();
+        const json = (await res.json()) as { changes: TrackerChange[] };
+        for (const c of json.changes.filter((x) => x.tool_status === "implemented")) {
+            const note = c.notes.toLowerCase();
+            expect(note).not.toContain("remedy calculator");
+            expect(note).not.toContain("remedy considerations");
+            expect(note).not.toContain("qualifying service checks");
+        }
+    });
+});

@@ -49,22 +49,26 @@ export interface AgentProviderRequest {
 // from the curated DB without any live Find Case Law call. Do not add citations
 // here that are not in the curated list — that would trigger a network lookup
 // and break hermeticity.
+// T-A10 / F-1,F-2,F-3: each `citation` carries the EXACT neutral-citation string
+// from verified-authorities.ts. citation-validator now awards VERIFIED only on an
+// exact neutral-citation match, so these must match the curated DB verbatim (not
+// merely the case name) to keep the smoke run VERIFIED and fully offline.
 const VERIFIED_CITES = {
     polkey: {
         name: "Polkey v AE Dayton Services Ltd",
-        citation: "Polkey v AE Dayton Services Ltd [1987] ICR 142",
+        citation: "Polkey v AE Dayton Services Ltd [1987] UKHL 8",
         principle:
             "A procedurally unfair dismissal is not saved by the argument that a fair procedure would have made no difference; that question goes to remedy (the 'Polkey reduction'), not liability.",
     },
     burchell: {
         name: "British Home Stores Ltd v Burchell",
-        citation: "BHS v Burchell [1978] ICR 303",
+        citation: "BHS v Burchell [1978] UKEAT 0108_78_2007",
         principle:
             "For a conduct dismissal the employer must genuinely believe in the misconduct, on reasonable grounds, after a reasonable investigation.",
     },
     iceland: {
         name: "Iceland Frozen Foods Ltd v Jones",
-        citation: "Iceland Frozen Foods Ltd v Jones [1983] ICR 17",
+        citation: "Iceland Frozen Foods Ltd v Jones [1982] UKEAT 0062_82_2207",
         principle:
             "The tribunal must not substitute its own view; it asks whether dismissal fell within the band of reasonable responses open to a reasonable employer.",
     },

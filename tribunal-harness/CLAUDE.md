@@ -278,6 +278,20 @@ pre-built vector/RAG corpus. Full detail in `docs/live-case-law.md`.
 - **Verify citations, never guess them.** Citation numbers are easy to get wrong — this repo's own seed list had several (see `corpus/authorities/MANIFEST.md`).
 - Coverage is ~2003 onward; older landmark authorities live in `verified-authorities.ts`.
 
+### Agent-side legal research — `uk-legal-mcp` (MCP)
+
+Dev/agent sessions in this repo have the **`uk-legal-mcp`** server configured (project
+`.mcp.json`; runs the local checkout at `~/Downloads/uk-legal-mcp-main` over stdio via `uv run`).
+It exposes UK **case law** (TNA Find Case Law), **legislation.gov.uk**, **Hansard/Parliament**,
+**bills, votes, committees**, **OSCOLA citation parsing/resolution**, and **HMRC** as tools.
+
+- **Use it for any UK legal lookup or citation check; do not answer legal questions from memory
+  when a primary source can be checked.** Return the source URL and citation metadata.
+- Prefer exact-match verification over nearby candidates; check jurisdiction (`extent`) and
+  whether a provision is in force before relying on it.
+- **Agent tooling only** — it is *not* wired into the product runtime. The app still verifies
+  citations via `find-case-law.ts` (live TNA). Don't conflate the two.
+
 ## PDF → Markdown Before Reasoning
 
 **Always convert a PDF to Markdown / clean text before an LLM reasons over it** —

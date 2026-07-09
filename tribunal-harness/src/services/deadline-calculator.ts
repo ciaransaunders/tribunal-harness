@@ -1,4 +1,7 @@
-import { TIME_LIMIT_CONFIG } from "@/lib/constants";
+import {
+    TIME_LIMIT_CONFIG,
+    formatCommencementMonth,
+} from "@/lib/constants";
 import type { DeadlineResult } from "@/schemas/types";
 
 /**
@@ -10,21 +13,42 @@ import type { DeadlineResult } from "@/schemas/types";
  * - Before commencement: 3 months less 1 day from the act complained of
  * - On or after commencement: 6 months less 1 day (ERA 2025 amendment)
  *
- * ACAS early conciliation clock-stopping (s207B ERA 1996):
+ * F-3 (dual regime while the SI is unconfirmed): the Oct 2026 six-month
+ * commencement is not yet fixed by Statutory Instrument
+ * (TIME_LIMIT_CONFIG.TIME_LIMIT_SI_CONFIRMED === false). Until it is, for any
+ * act on/after the assumed commencement we compute BOTH regimes and return the
+ * conservative 3-month deadline as the PRIMARY entry, with the 6-month deadline
+ * as a clearly-labelled secondary entry, plus a persistent TBC warning. This
+ * honours Hard Rules 4 (deadline conservatism) and 6 (flag TBC dates).
+ *
+ * ACAS early conciliation clock-stopping (s.207B ERA 1996):
  * - Clock stops on Day A (EC notification to ACAS)
  * - Restarts on Day B (certificate issued)
- * - Extended deadline = Day B + (original deadline − Day A) in days
- * - Minimum: 1 calendar month from Day B
- * - Claimant gets whichever is longer
+ * - s.207B(3): the Day A→Day B gap is discounted, so the deadline moves later
+ *   by (Day B − Day A) days.
+ * - s.207B(4): a one-month-from-Day-B backstop applies ONLY when the extended
+ *   deadline would fall within [Day A, Day B + 1 month]. (Equivalently: the
+ *   claimant gets the later of the extended deadline and one-month-from-Day-B.)
+ * - F-1 (no revival): if Day A falls AFTER the base deadline, the claim had
+ *   ALREADY expired when conciliation began — s.207B cannot revive it. We
+ *   return the unextended base deadline and warn explicitly. An extension can
+ *   NEVER produce a date earlier than the base deadline (F-14 floor).
  *
- * Bank holidays: if the calculated deadline falls on a weekend or UK bank
- * holiday, it is extended to the next working day (standard tribunal practice).
+ * F-6 (non-working-day handling): the statutory time limit for presenting an
+ * ET1 is NOT extended when it lands on a weekend or bank holiday (presentation
+ * is possible 24/7 online; the EAT has held a claim presented the Monday after
+ * a Sunday deadline out of time — cf. Swainston v Hetton Victory Club; Miah v
+ * Axis Security). We therefore never move the returned deadline LATER. Instead
+ * we warn that the deadline falls on a non-working day and surface the previous
+ * working day as a practical filing target.
  *
  * All date arithmetic uses UTC to avoid timezone-related off-by-one errors.
  *
  * Wrongful dismissal: follows the same ET time limit as other claims when
  * brought in the ET (capped at £25,000). County court route has 6-year limit.
  */
+
+const DAY_MS = 1000 * 60 * 60 * 24;
 
 // ---------------------------------------------------------------------------
 // UTC-safe date utilities
@@ -34,10 +58,29 @@ import type { DeadlineResult } from "@/schemas/types";
  * Parse an ISO date string (YYYY-MM-DD) as a UTC date.
  * Avoids the timezone shift that occurs when using new Date("YYYY-MM-DD")
  * directly with local-time methods.
+ *
+ * F-10: NaN guard. A malformed or non-calendar date (e.g. "not-a-date",
+ * "2026-02-31") previously produced a NaN date that flowed silently into the
+ * arithmetic ("NaN-NaN-NaN" output, is_expired:false). Throw instead — the
+ * route validates and returns 400 before we get here, and this is a
+ * defence-in-depth backstop.
  */
 function parseUTC(iso: string): Date {
+    if (typeof iso !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+        throw new Error(`Invalid date (expected YYYY-MM-DD): ${String(iso)}`);
+    }
     const [y, m, d] = iso.split("-").map(Number);
-    return new Date(Date.UTC(y, m - 1, d));
+    const date = new Date(Date.UTC(y, m - 1, d));
+    // Reject silent calendar overflow (e.g. 2026-02-31 → 2026-03-03).
+    if (
+        Number.isNaN(date.getTime()) ||
+        date.getUTCFullYear() !== y ||
+        date.getUTCMonth() !== m - 1 ||
+        date.getUTCDate() !== d
+    ) {
+        throw new Error(`Invalid calendar date: ${iso}`);
+    }
+    return date;
 }
 
 function toISODate(d: Date): string {
@@ -72,11 +115,15 @@ function isNonWorkingDay(d: Date): boolean {
     return UK_BANK_HOLIDAYS_EW.has(toISODate(d));
 }
 
-function nextWorkingDay(d: Date): Date {
+/**
+ * F-6: the working day immediately BEFORE `d`. Used only to surface a practical
+ * filing target in a warning — never to move the statutory deadline.
+ */
+function previousWorkingDay(d: Date): Date {
     const result = new Date(d);
-    while (isNonWorkingDay(result)) {
-        result.setUTCDate(result.getUTCDate() + 1);
-    }
+    do {
+        result.setUTCDate(result.getUTCDate() - 1);
+    } while (isNonWorkingDay(result));
     return result;
 }
 
@@ -85,47 +132,51 @@ function nextWorkingDay(d: Date): Date {
 // ---------------------------------------------------------------------------
 
 /**
- * Add N calendar months to a UTC date, then subtract 1 day.
+ * Add N calendar months to a UTC date, then subtract 1 day — the ET limitation
+ * period ("3/6 months less 1 day").
  *
- * Statutory rule: "3 months less 1 day" means the deadline is the day before
- * the same calendar date N months later. For month-end dates where the target
- * month is shorter, the last day of that month is used before subtracting 1.
+ * F-15 (corresponding-date rule, Dodds v Walker [1981] 1 WLR 1027; Zoan v
+ * Rouamba [2000] 1 WLR 1509): a period of N months beginning with a date ends
+ * on the day BEFORE the corresponding date in the later month. Where the later
+ * month has NO corresponding day (the start day exceeds the number of days in
+ * that month), the period ends on the LAST day of that month — and is NOT
+ * reduced by a further day.
  *
  * Examples:
- *   15 Jan + 3 months less 1 day = 14 Apr ✓
- *   31 Jan + 3 months less 1 day = 29 Apr (Apr has 30 days → clamp to 30 → less 1 = 29) ✓
- *   31 Oct + 3 months less 1 day = 30 Jan ✓
- *   30 Nov + 3 months less 1 day = 27 Feb (Feb 2026 has 28 days → clamp to 28 → less 1 = 27) ✓
+ *   15 Jan + 3m less 1 day = 14 Apr        (corresponding date 15 Apr exists)
+ *   31 Oct + 3m less 1 day = 30 Jan        (corresponding date 31 Jan exists)
+ *   28 Feb + 3m less 1 day = 27 May        (corresponding date 28 May exists)
+ *    1 Jun + 3m less 1 day = 31 Aug        (corresponding date 1 Sep exists)
+ *   31 Jan + 3m less 1 day = 30 Apr        (no 31 Apr → last day of April)
+ *   30 Nov + 3m less 1 day = 28 Feb        (no 30 Feb → last day of February)
+ *   31 Aug + 6m less 1 day = 28 Feb        (no 31 Feb → last day of February)
  */
 export function addMonthsLessOneDay(date: Date, months: number): Date {
     const y = date.getUTCFullYear();
     const m = date.getUTCMonth(); // 0-indexed
     const d = date.getUTCDate();
 
-    // Target month (0-indexed)
     const targetMonth = m + months;
     const targetYear = y + Math.floor(targetMonth / 12);
-    const targetMonthNorm = targetMonth % 12;
+    const targetMonthNorm = ((targetMonth % 12) + 12) % 12;
 
-    // Days in target month
-    const daysInTargetMonth = new Date(Date.UTC(targetYear, targetMonthNorm + 1, 0)).getUTCDate();
+    const daysInTargetMonth = new Date(
+        Date.UTC(targetYear, targetMonthNorm + 1, 0)
+    ).getUTCDate();
 
-    // Clamp day to last day of target month, then subtract 1
-    const clampedDay = Math.min(d, daysInTargetMonth);
-    const finalDay = clampedDay - 1;
-
-    if (finalDay <= 0) {
-        // Subtracting 1 day rolls back to previous month
-        // e.g. clampedDay = 1 → go to last day of previous month
-        const prevMonthDays = new Date(Date.UTC(targetYear, targetMonthNorm, 0)).getUTCDate();
-        return new Date(Date.UTC(targetYear, targetMonthNorm - 1, prevMonthDays));
+    if (d <= daysInTargetMonth) {
+        // Corresponding date exists → deadline is the day before it.
+        const corresponding = new Date(Date.UTC(targetYear, targetMonthNorm, d));
+        corresponding.setUTCDate(corresponding.getUTCDate() - 1);
+        return corresponding;
     }
 
-    return new Date(Date.UTC(targetYear, targetMonthNorm, finalDay));
+    // F-15: no corresponding date → period ends on the last day of the month.
+    return new Date(Date.UTC(targetYear, targetMonthNorm, daysInTargetMonth));
 }
 
 /**
- * Add N calendar months to a UTC date (used for ACAS minimum extension).
+ * Add N calendar months to a UTC date (used for the ACAS one-month backstop).
  */
 function addMonths(date: Date, months: number): Date {
     const y = date.getUTCFullYear();
@@ -134,17 +185,112 @@ function addMonths(date: Date, months: number): Date {
 
     const targetMonth = m + months;
     const targetYear = y + Math.floor(targetMonth / 12);
-    const targetMonthNorm = targetMonth % 12;
+    const targetMonthNorm = ((targetMonth % 12) + 12) % 12;
 
-    const daysInTargetMonth = new Date(Date.UTC(targetYear, targetMonthNorm + 1, 0)).getUTCDate();
+    const daysInTargetMonth = new Date(
+        Date.UTC(targetYear, targetMonthNorm + 1, 0)
+    ).getUTCDate();
     const clampedDay = Math.min(d, daysInTargetMonth);
 
     return new Date(Date.UTC(targetYear, targetMonthNorm, clampedDay));
 }
 
 // ---------------------------------------------------------------------------
-// Core calculation
+// Core calculation for a single regime
 // ---------------------------------------------------------------------------
+
+type Regime = "pre_era_2025" | "post_era_2025";
+
+/**
+ * Compute a single DeadlineResult for a given number of months / regime.
+ * Callers decide which regime(s) apply (see calculateDeadline /
+ * calculateDeadlines).
+ */
+function computeOne(
+    actDate: Date,
+    months: number,
+    regime: Regime,
+    claimType: string,
+    acasDayA?: string,
+    acasDayB?: string
+): DeadlineResult {
+    // F-30: base_deadline is the true statutory deadline BEFORE any ACAS
+    // extension and WITHOUT any non-working-day shift (F-6).
+    const baseDeadline = addMonthsLessOneDay(actDate, months);
+
+    let finalDeadline = baseDeadline;
+    let acasExtended: Date | undefined;
+
+    // ACAS early conciliation extension (s.207B ERA 1996)
+    if (acasDayA && acasDayB) {
+        const dayA = parseUTC(acasDayA);
+        const dayB = parseUTC(acasDayB);
+
+        if (dayA.getTime() > baseDeadline.getTime()) {
+            // F-1 (no revival): conciliation begun after the limit had already
+            // expired does not extend time. Return the unextended base deadline;
+            // no ACAS extension is recorded.
+            finalDeadline = baseDeadline;
+            acasExtended = undefined;
+        } else {
+            // F-14 defence: never let an inverted (Day B < Day A) input shorten
+            // the gap. The route rejects B<A (F-10); this is belt-and-braces.
+            const dayBEff =
+                dayB.getTime() < dayA.getTime() ? dayA : dayB;
+
+            // s.207B(3): discount the Day A→Day B gap.
+            const gapDays = Math.round(
+                (dayBEff.getTime() - dayA.getTime()) / DAY_MS
+            );
+            const extended = new Date(baseDeadline);
+            extended.setUTCDate(extended.getUTCDate() + gapDays);
+
+            // s.207B(4): one-month-from-Day-B backstop applies only when the
+            // extended deadline falls within [Day A, Day B + 1 month]. Taking
+            // the later of the two yields exactly that: inside the window the
+            // backstop wins; outside it the (longer) extended date wins.
+            const oneMonthFromDayB = addMonths(dayBEff, 1);
+            let f =
+                extended.getTime() > oneMonthFromDayB.getTime()
+                    ? extended
+                    : oneMonthFromDayB;
+
+            // F-14 floor: an extension can never produce a date earlier than
+            // the base statutory deadline.
+            if (f.getTime() < baseDeadline.getTime()) f = new Date(baseDeadline);
+
+            finalDeadline = f;
+            acasExtended = f;
+        }
+    }
+
+    // F-31: measure remaining time from UTC midnight of "today", not the current
+    // instant, so the expiry flag does not flip late near midnight (BST). On the
+    // deadline day itself days_remaining === 0 and is_expired === false.
+    const now = new Date();
+    const todayUTC = Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate()
+    );
+    const daysRemaining = Math.round(
+        (finalDeadline.getTime() - todayUTC) / DAY_MS
+    );
+
+    return {
+        claim_type: claimType,
+        base_deadline: toISODate(baseDeadline),
+        acas_extended_deadline: acasExtended
+            ? toISODate(acasExtended)
+            : undefined,
+        final_deadline: toISODate(finalDeadline),
+        // F-30: retained alias of final_deadline for legacy consumers.
+        original_deadline: toISODate(finalDeadline),
+        regime,
+        days_remaining: daysRemaining,
+        is_expired: daysRemaining < 0,
+    };
+}
 
 export function calculateDeadline(
     dateOfAct: string,
@@ -155,58 +301,25 @@ export function calculateDeadline(
     const actDate = parseUTC(dateOfAct);
     const commencementDate = parseUTC(TIME_LIMIT_CONFIG.COMMENCEMENT_DATE);
 
-    // Determine regime
-    const isPostERA2025 = actDate >= commencementDate;
+    const isPostERA2025 = actDate.getTime() >= commencementDate.getTime();
     const months = isPostERA2025
         ? TIME_LIMIT_CONFIG.POST_ERA_2025_MONTHS
         : TIME_LIMIT_CONFIG.PRE_ERA_2025_MONTHS;
+    const regime: Regime = isPostERA2025 ? "post_era_2025" : "pre_era_2025";
 
-    // Correct statutory month arithmetic
-    const baseDeadline = addMonthsLessOneDay(actDate, months);
-
-    let finalDeadline = baseDeadline;
-
-    // ACAS early conciliation extension (s207B ERA 1996)
-    if (acasDayA && acasDayB) {
-        const dayA = parseUTC(acasDayA);
-        const dayB = parseUTC(acasDayB);
-
-        // Days remaining in the limitation period when clock stopped on Day A
-        const remainderMs = baseDeadline.getTime() - dayA.getTime();
-        const remainderDays = Math.max(0, Math.ceil(remainderMs / (1000 * 60 * 60 * 24)));
-
-        // Extended deadline = Day B + remainder days
-        const extendedDeadline = new Date(dayB);
-        extendedDeadline.setUTCDate(extendedDeadline.getUTCDate() + remainderDays);
-
-        // Minimum: 1 calendar month from Day B
-        const oneMonthFromDayB = addMonths(dayB, 1);
-
-        // Claimant gets the longer of the two
-        finalDeadline =
-            extendedDeadline > oneMonthFromDayB ? extendedDeadline : oneMonthFromDayB;
-    }
-
-    // If deadline falls on non-working day, extend to next working day
-    finalDeadline = nextWorkingDay(finalDeadline);
-
-    const now = new Date();
-    const daysRemaining = Math.ceil(
-        (finalDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    return computeOne(
+        actDate,
+        months,
+        regime,
+        claimType || "general",
+        acasDayA,
+        acasDayB
     );
-
-    return {
-        claim_type: claimType || "general",
-        original_deadline: toISODate(finalDeadline),
-        acas_extended_deadline:
-            acasDayA && acasDayB
-                ? toISODate(finalDeadline)
-                : undefined,
-        regime: isPostERA2025 ? "post_era_2025" : "pre_era_2025",
-        days_remaining: daysRemaining,
-        is_expired: daysRemaining < 0,
-    };
 }
+
+// ---------------------------------------------------------------------------
+// Multi-claim calculation + warnings
+// ---------------------------------------------------------------------------
 
 /**
  * Calculate deadlines for multiple claim types.
@@ -223,37 +336,134 @@ export function calculateDeadlines(
     acasDayB?: string
 ): {
     deadlines: DeadlineResult[];
-    time_limit_regime: "pre_era_2025" | "post_era_2025";
+    time_limit_regime: Regime;
     warnings: string[];
 } {
     const actDate = parseUTC(dateOfAct);
     const commencementDate = parseUTC(TIME_LIMIT_CONFIG.COMMENCEMENT_DATE);
-    const isPostERA2025 = actDate >= commencementDate;
+    const isPostERA2025 = actDate.getTime() >= commencementDate.getTime();
+    const siConfirmed = TIME_LIMIT_CONFIG.TIME_LIMIT_SI_CONFIRMED;
 
-    const deadlines = claimTypes.map((ct) =>
-        calculateDeadline(dateOfAct, acasDayA, acasDayB, ct)
+    // F-3: hedge (compute BOTH regimes, lead with the conservative 3-month) for
+    // any act on/after the assumed commencement while the SI is unconfirmed.
+    const hedge = isPostERA2025 && !siConfirmed;
+
+    const commencementMonth = formatCommencementMonth(
+        TIME_LIMIT_CONFIG.COMMENCEMENT_DATE
     );
+
+    const deadlines: DeadlineResult[] = [];
+    for (const ct of claimTypes) {
+        if (hedge) {
+            // Primary = conservative 3-month regime.
+            deadlines.push(
+                computeOne(
+                    actDate,
+                    TIME_LIMIT_CONFIG.PRE_ERA_2025_MONTHS,
+                    "pre_era_2025",
+                    ct,
+                    acasDayA,
+                    acasDayB
+                )
+            );
+            // Secondary = 6-month regime, clearly labelled as conditional.
+            deadlines.push(
+                computeOne(
+                    actDate,
+                    TIME_LIMIT_CONFIG.POST_ERA_2025_MONTHS,
+                    "post_era_2025",
+                    `${ct} (6-month regime — applies only if the ERA 2025 Statutory Instrument confirms the assumed ${commencementMonth} commencement)`,
+                    acasDayA,
+                    acasDayB
+                )
+            );
+        } else {
+            const months = isPostERA2025
+                ? TIME_LIMIT_CONFIG.POST_ERA_2025_MONTHS
+                : TIME_LIMIT_CONFIG.PRE_ERA_2025_MONTHS;
+            const regime: Regime = isPostERA2025
+                ? "post_era_2025"
+                : "pre_era_2025";
+            deadlines.push(
+                computeOne(actDate, months, regime, ct, acasDayA, acasDayB)
+            );
+        }
+    }
 
     const warnings: string[] = [];
 
-    // Transitional warning: near commencement date
-    const daysDiff = Math.abs(
-        (actDate.getTime() - commencementDate.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    if (daysDiff < 30) {
+    // F-3: TBC hedge warning. Text describes what the response ACTUALLY contains
+    // (the prior text falsely claimed both deadlines were shown when only one
+    // was computed).
+    if (hedge) {
         warnings.push(
-            "The date of the act is close to the ERA 2025 time limit commencement date. " +
-            "The exact commencement date is to be confirmed by Statutory Instrument. " +
-            "Both 3-month and 6-month deadlines are shown for safety."
+            `The ERA 2025 six-month time-limit commencement (assumed ${commencementMonth}) is ` +
+                `NOT yet confirmed by Statutory Instrument. Because the applicable regime is ` +
+                `uncertain, each claim is shown TWICE: the conservative three-month deadline is ` +
+                `listed first as the PRIMARY deadline, and the six-month deadline second as a ` +
+                `clearly-labelled secondary entry that applies only if the SI confirms the assumed ` +
+                `commencement. Treat the shorter (three-month) deadline as operative until the SI ` +
+                `is confirmed. Exact commencement date to be confirmed by Statutory Instrument.`
+        );
+    } else if (
+        !siConfirmed &&
+        !isPostERA2025 &&
+        actDate.getTime() >=
+            commencementDate.getTime() - 30 * DAY_MS
+    ) {
+        // Act shortly BEFORE the assumed commencement while the SI is unconfirmed.
+        // The conservative three-month deadline is shown; a confirmed earlier
+        // commencement could only lengthen the limit, so the shown deadline is
+        // never overstated.
+        warnings.push(
+            `The date of the act is shortly before the assumed ERA 2025 six-month time-limit ` +
+                `commencement (${commencementMonth}), which is NOT yet confirmed by Statutory ` +
+                `Instrument. The conservative three-month deadline is shown. If the confirmed ` +
+                `commencement turns out to be earlier than assumed, a longer six-month limit could ` +
+                `apply — this would not shorten the deadline shown. Exact commencement date to be ` +
+                `confirmed by Statutory Instrument.`
         );
     }
 
-    // Urgent warning
+    // F-1: explicit warning when ACAS EC began after the (operative) limit had
+    // already expired — no extension is granted.
+    if (acasDayA && acasDayB && deadlines.length > 0) {
+        const dayA = parseUTC(acasDayA);
+        const primaryBase = parseUTC(deadlines[0].base_deadline);
+        if (dayA.getTime() > primaryBase.getTime()) {
+            warnings.push(
+                "ACAS conciliation begun after the limit expired does not extend time (ERA 1996 " +
+                    "s.207B). The deadline shown is the unextended statutory limit and the claim may " +
+                    "already be out of time — seek advice immediately."
+            );
+        }
+    }
+
+    // F-6: non-working-day warning. The statutory deadline is NOT moved to the
+    // next working day; warn instead and surface the previous working day as a
+    // practical filing target. Deduplicate by deadline date.
+    const nonWorkingSeen = new Set<string>();
+    for (const dl of deadlines) {
+        if (nonWorkingSeen.has(dl.final_deadline)) continue;
+        const fd = parseUTC(dl.final_deadline);
+        if (isNonWorkingDay(fd)) {
+            nonWorkingSeen.add(dl.final_deadline);
+            const prev = toISODate(previousWorkingDay(fd));
+            warnings.push(
+                `Your deadline (${dl.final_deadline}) falls on a weekend or bank holiday. The ` +
+                    `statutory time limit is NOT extended to the next working day — you must present ` +
+                    `your claim on or before ${dl.final_deadline}. Practical target: file by the ` +
+                    `previous working day, ${prev}.`
+            );
+        }
+    }
+
+    // Urgent warning (based on the soonest operative deadline).
     const soonest = Math.min(...deadlines.map((d) => d.days_remaining));
-    if (soonest >= 0 && soonest <= 14) {
+    if (Number.isFinite(soonest) && soonest >= 0 && soonest <= 14) {
         warnings.push(
             `URGENT: Your earliest deadline expires in ${soonest} days. ` +
-            "Seek immediate advice if you have not already filed your claim."
+                "Seek immediate advice if you have not already filed your claim."
         );
     }
 
@@ -261,8 +471,8 @@ export function calculateDeadlines(
     if (deadlines.some((d) => d.is_expired)) {
         warnings.push(
             "One or more deadlines have expired. A tribunal may still accept a late claim " +
-            "under the 'just and equitable' (discrimination) or 'not reasonably practicable' " +
-            "(unfair dismissal) tests. Seek legal advice immediately."
+                "under the 'just and equitable' (discrimination) or 'not reasonably practicable' " +
+                "(unfair dismissal) tests. Seek legal advice immediately."
         );
     }
 
@@ -270,8 +480,8 @@ export function calculateDeadlines(
     if (claimTypes.includes("wrongful_dismissal")) {
         warnings.push(
             "Wrongful dismissal: this calculator shows the ET route time limit (3 or 6 months less 1 day). " +
-            "If your claim exceeds the ET damages cap of £25,000, you may wish to bring it in the " +
-            "county court instead, where the Limitation Act 1980 allows 6 years from breach of contract."
+                "If your claim exceeds the ET damages cap of £25,000, you may wish to bring it in the " +
+                "county court instead, where the Limitation Act 1980 allows 6 years from breach of contract."
         );
     }
 
@@ -280,15 +490,15 @@ export function calculateDeadlines(
     // bank holiday extension may not be applied correctly.
     const BANK_HOLIDAY_DATA_LAST_YEAR = 2028;
     const hasStaleDeadline = deadlines.some((d) => {
-        const year = new Date(d.original_deadline).getUTCFullYear();
+        const year = parseUTC(d.final_deadline).getUTCFullYear();
         return year > BANK_HOLIDAY_DATA_LAST_YEAR;
     });
     if (hasStaleDeadline) {
         warnings.push(
             `WARNING: One or more deadlines fall after ${BANK_HOLIDAY_DATA_LAST_YEAR}. ` +
-            "The bank holiday calendar used by this calculator only covers up to " +
-            `${BANK_HOLIDAY_DATA_LAST_YEAR}. Bank holiday extensions may not be applied correctly. ` +
-            "Please verify your deadline against the GOV.UK bank holidays calendar."
+                "The bank holiday calendar used by this calculator only covers up to " +
+                `${BANK_HOLIDAY_DATA_LAST_YEAR}. Bank holiday extensions may not be applied correctly. ` +
+                "Please verify your deadline against the GOV.UK bank holidays calendar."
         );
     }
 

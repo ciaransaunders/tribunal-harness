@@ -55,6 +55,28 @@ export function isClientAvailable(): boolean {
     return !!process.env.ANTHROPIC_API_KEY;
 }
 
+// ─── Typed Errors ───────────────────────────────────────────────────
+
+/**
+ * F-21: Thrown when Claude stops on `stop_reason === "max_tokens"`.
+ *
+ * A max_tokens-truncated response contains incomplete (usually invalid) JSON.
+ * Surfacing a distinct, typed error lets callers retry/report instead of
+ * silently degrading to a raw-text / {synthesis: <truncated>} fallback and
+ * presenting a truncated answer as a normal result.
+ */
+export class ClaudeTruncatedResponseError extends Error {
+    /** Stable machine-readable discriminator for callers. */
+    readonly code = "response_truncated_max_tokens";
+    constructor(label: string, maxTokens: number) {
+        super(
+            `Claude response truncated: hit max_tokens (${maxTokens}) for ${label}. ` +
+            `The output is incomplete and must not be presented as a normal result.`
+        );
+        this.name = "ClaudeTruncatedResponseError";
+    }
+}
+
 // ─── Response Types ─────────────────────────────────────────────────
 
 export interface ClaudeCallResult {
@@ -110,6 +132,20 @@ export async function callClaude(
     // a deterministic, schema-conformant response from src/lib/llm/agent-provider.ts.
     // This enables a fully offline smoke run before a real provider is wired in.
     if (isAgentProvider()) {
+        // F-22: The agent stand-in returns canned, deterministic fixture
+        // "analysis". The only marker that identifies it (_debug.model =
+        // "agent-stand-in") is stripped outside development, so in a production
+        // build a stray LLM_PROVIDER=agent would serve SIMULATED, non-real legal
+        // analysis indistinguishably from the real engine. Refuse outright.
+        // (smoke runs with NODE_ENV unset → not production → stays working.)
+        if (process.env.NODE_ENV === "production") {
+            throw new Error(
+                "LLM_PROVIDER=agent (offline stand-in) is not permitted when " +
+                "NODE_ENV=production: it would serve SIMULATED — not real legal " +
+                "analysis. Configure a real provider (ANTHROPIC_API_KEY) instead."
+            );
+        }
+
         const content = generateAgentResponse({
             endpoint: params.endpoint,
             system: params.system,
@@ -165,18 +201,47 @@ export async function callClaude(
         requestParams.temperature = config.temperature;
     }
 
+    // F-34: The pinned models (Opus 4.0 / Sonnet 4.0 / Haiku 4.5) predate the
+    // `output_config.effort` / adaptive-thinking parameter — it is unsupported
+    // on Opus/Sonnet 4.0 and returns an error on Haiku 4.5. So config.effort is
+    // NOT wired into the request here; it remains logging/routing metadata. If
+    // the models are upgraded to an effort-capable tier this is where effort
+    // would be sent (see src/lib/claude-config.ts for the routing table).
+
     // Apply extended thinking if enabled
     // Note: When thinking is enabled, temperature must not be set (API constraint)
     if (config.thinking.type === "enabled" && config.thinking.budget_tokens) {
+        // F-4: defence-in-depth. On these models the API requires
+        // budget_tokens strictly LESS than max_tokens (else a 400). The config
+        // agent fixes the source values, but if a caller passes an inverted
+        // pair (e.g. via configOverride) clamp to max_tokens-1 and log rather
+        // than sending an invalid request.
+        let budgetTokens = config.thinking.budget_tokens;
+        if (budgetTokens >= config.max_tokens) {
+            const clamped = config.max_tokens - 1;
+            console.warn(
+                `[Claude] thinking.budget_tokens (${budgetTokens}) >= max_tokens ` +
+                `(${config.max_tokens}) for ${config.label}; clamping to ${clamped}.`
+            );
+            budgetTokens = clamped;
+        }
         requestParams.thinking = {
             type: "enabled",
-            budget_tokens: config.thinking.budget_tokens,
+            budget_tokens: budgetTokens,
         };
         // Anthropic API requires temperature to be unset when thinking is enabled
         delete requestParams.temperature;
     }
 
     const response = await client.messages.create(requestParams);
+
+    // F-21: A max_tokens-truncated response is incomplete (its JSON will not
+    // parse). Do NOT let it flow through to the raw-text / {synthesis:...}
+    // fallback and be presented as a normal answer — surface a typed error so
+    // callers can retry or report.
+    if (response.stop_reason === "max_tokens") {
+        throw new ClaudeTruncatedResponseError(config.label, config.max_tokens);
+    }
 
     // Extract text content (skip thinking blocks if present)
     let content = "";

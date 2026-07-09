@@ -32,6 +32,10 @@ export default function HomePage() {
                     narrative_text: payload.narrative,
                     key_dates: { date_of_last_act: payload.dateOfLastAct },
                     mode: "narrative",
+                    // F-12: forward the UK GDPR Art. 9(2)(a) consent checkbox state so the
+                    // server-side consent gate is satisfied. The Run Analysis button is
+                    // already disabled until hasConsented is true.
+                    consent: payload.hasConsented,
                 }),
             });
             const data = await res.json();

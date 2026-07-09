@@ -89,6 +89,48 @@ describe("fetchPdfAsMarkdown (SSRF-guarded)", () => {
         const r = await fetchPdfAsMarkdown("https://www.gov.uk/big.pdf");
         expect(r.status).toBe("too_large");
     });
+
+    // F-36: an allowlisted open-redirect must not be able to bounce us to a
+    // non-allowlisted (e.g. internal metadata) host.
+    it("refuses to follow a redirect to a non-allowlisted host", async () => {
+        const redirect = vi.fn(async () => ({
+            ok: false,
+            status: 302,
+            headers: { get: (k: string) => (k.toLowerCase() === "location" ? "https://169.254.169.254/latest/meta-data" : null) },
+        }) as unknown as Response);
+        vi.stubGlobal("fetch", redirect);
+        const r = await fetchPdfAsMarkdown("https://www.gov.uk/open-redirect.pdf");
+        expect(r.status).toBe("forbidden_host");
+        expect(redirect).toHaveBeenCalledTimes(1); // followed no further
+    });
+
+    // F-36: a redirect that stays within the allowlist is still honoured.
+    it("follows a redirect to another allowlisted host", async () => {
+        let call = 0;
+        const fetchMock = vi.fn(async () => {
+            call++;
+            if (call === 1) {
+                return {
+                    ok: false,
+                    status: 301,
+                    headers: { get: (k: string) => (k.toLowerCase() === "location" ? "https://assets.caselaw.nationalarchives.gov.uk/final.pdf" : null) },
+                } as unknown as Response;
+            }
+            return {
+                ok: true,
+                status: 200,
+                headers: { get: () => null },
+                arrayBuffer: async () => {
+                    const b = pdfBuffer();
+                    return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+                },
+            } as unknown as Response;
+        });
+        vi.stubGlobal("fetch", fetchMock);
+        const r = await fetchPdfAsMarkdown("https://caselaw.nationalarchives.gov.uk/redirect.pdf");
+        expect(r.status).toBe("ok");
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
 });
 
 describe.skipIf(!process.env.RUN_LIVE_CASELAW)("LIVE PDF fetch", () => {
